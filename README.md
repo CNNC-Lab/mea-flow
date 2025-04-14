@@ -1,6 +1,4 @@
-# MEA Flow
-
-![MEA Flow Logo](docs/assets/logo.png)
+<img src="docs/assets/logo.png" width="500" height="600">
 
 **Latent State Space Analysis of Micro-Electrode Array Data**
 
