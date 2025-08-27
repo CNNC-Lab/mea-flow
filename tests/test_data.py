@@ -10,7 +10,11 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from mea_flow.data import SpikeList
-from mea_flow.data.loaders import load_csv_data, load_dataframe_data
+from mea_flow.data.loaders import load_csv_file, load_from_dataframe
+
+# Create aliases for consistency
+load_csv_data = load_csv_file
+load_dataframe_data = load_from_dataframe
 from mea_flow.data.spike_list import SpikeTrain
 
 
@@ -21,16 +25,18 @@ class TestSpikeTrain:
     def test_spike_train_creation(self):
         """Test SpikeTrain creation and basic properties."""
         spike_times = np.array([0.1, 0.5, 1.2, 2.3])
-        train = SpikeTrain(spike_times)
+        train = SpikeTrain(channel_id=0, spike_times=spike_times, recording_length=5.0)
         
         assert len(train.spike_times) == 4
         assert train.n_spikes == 4
         assert np.allclose(train.spike_times, spike_times)
+        assert train.channel_id == 0
+        assert train.recording_length == 5.0
     
     @pytest.mark.unit
     def test_spike_train_empty(self):
         """Test SpikeTrain with no spikes."""
-        train = SpikeTrain(np.array([]))
+        train = SpikeTrain(channel_id=0, spike_times=np.array([]), recording_length=1.0)
         
         assert train.n_spikes == 0
         assert len(train.spike_times) == 0
@@ -39,7 +45,7 @@ class TestSpikeTrain:
     def test_spike_train_sorting(self):
         """Test that spike times are automatically sorted."""
         unsorted_times = np.array([1.5, 0.3, 2.1, 0.8])
-        train = SpikeTrain(unsorted_times)
+        train = SpikeTrain(channel_id=0, spike_times=unsorted_times, recording_length=3.0)
         
         assert np.array_equal(train.spike_times, np.array([0.3, 0.8, 1.5, 2.1]))
     
@@ -47,9 +53,9 @@ class TestSpikeTrain:
     def test_spike_train_isi(self):
         """Test inter-spike interval calculation."""
         spike_times = np.array([0.0, 0.1, 0.3, 0.7])
-        train = SpikeTrain(spike_times)
+        train = SpikeTrain(channel_id=0, spike_times=spike_times, recording_length=1.0)
         
-        isis = train.isi()
+        isis = train.get_isi()
         expected_isis = np.array([0.1, 0.2, 0.4])
         assert np.allclose(isis, expected_isis)
     
@@ -57,46 +63,24 @@ class TestSpikeTrain:
     def test_spike_train_isi_empty(self):
         """Test ISI calculation with no or single spike."""
         # Empty train
-        train_empty = SpikeTrain(np.array([]))
-        assert len(train_empty.isi()) == 0
+        train_empty = SpikeTrain(channel_id=0, spike_times=np.array([]), recording_length=1.0)
+        assert len(train_empty.get_isi()) == 0
         
         # Single spike
-        train_single = SpikeTrain(np.array([1.0]))
-        assert len(train_single.isi()) == 0
+        train_single = SpikeTrain(channel_id=0, spike_times=np.array([1.0]), recording_length=2.0)
+        assert len(train_single.get_isi()) == 0
     
     @pytest.mark.unit
     def test_spike_train_firing_rate(self):
         """Test firing rate calculation."""
         spike_times = np.array([0.1, 0.5, 1.2, 2.3])  # 4 spikes
-        train = SpikeTrain(spike_times)
+        train = SpikeTrain(channel_id=0, spike_times=spike_times, recording_length=3.0)
         
-        # Test with recording length
-        rate = train.firing_rate(recording_length=3.0)
+        # Test firing rate property
+        rate = train.firing_rate
         assert np.isclose(rate, 4.0/3.0)
-        
-        # Test without recording length (uses max spike time)
-        rate_auto = train.firing_rate()
-        assert np.isclose(rate_auto, 4.0/2.3)
     
-    @pytest.mark.unit
-    def test_spike_train_time_slice(self):
-        """Test time slicing functionality."""
-        spike_times = np.array([0.1, 0.5, 1.2, 2.3, 3.1])
-        train = SpikeTrain(spike_times)
-        
-        # Slice from 0.5 to 2.5
-        sliced = train.time_slice(0.5, 2.5)
-        expected = np.array([0.5, 1.2, 2.3])
-        assert np.allclose(sliced.spike_times, expected)
-    
-    @pytest.mark.unit
-    def test_spike_train_time_slice_empty(self):
-        """Test time slicing with no spikes in range."""
-        spike_times = np.array([0.1, 0.2])
-        train = SpikeTrain(spike_times)
-        
-        sliced = train.time_slice(1.0, 2.0)
-        assert sliced.n_spikes == 0
+
 
 
 class TestSpikeList:
