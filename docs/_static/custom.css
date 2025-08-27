@@ -1,0 +1,97 @@
+/* Custom CSS for MEA-Flow documentation */
+
+/* Improve code block appearance */
+.highlight {
+    background: #f8f8f8;
+    border: 1px solid #e1e4e5;
+    border-radius: 4px;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+/* Style for admonitions */
+.admonition {
+    margin: 1em 0;
+    padding: 0.5em;
+    border-left: 4px solid #ccc;
+    border-radius: 4px;
+}
+
+.admonition.note {
+    border-left-color: #1f77b4;
+    background-color: #e7f2fa;
+}
+
+.admonition.warning {
+    border-left-color: #ff7f0e;
+    background-color: #fff3cd;
+}
+
+.admonition.important {
+    border-left-color: #d62728;
+    background-color: #f8d7da;
+}
+
+/* Improve table styling */
+table.docutils {
+    border-collapse: collapse;
+    margin: 1em 0;
+}
+
+table.docutils th,
+table.docutils td {
+    border: 1px solid #e1e4e5;
+    padding: 8px 12px;
+}
+
+table.docutils th {
+    background-color: #f1f2f3;
+    font-weight: bold;
+}
+
+/* Style for inline code */
+code.docutils.literal {
+    background-color: #f1f2f3;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+/* Improve navigation */
+.wy-menu-vertical a {
+    color: #2980B9;
+}
+
+.wy-menu-vertical a:hover {
+    background-color: #e7f2fa;
+}
+
+/* Custom styling for API documentation */
+.py.class, .py.function, .py.method {
+    border-left: 3px solid #2980B9;
+    padding-left: 10px;
+    margin: 1em 0;
+}
+
+/* Improve notebook styling */
+.nbinput .highlight,
+.nboutput .highlight {
+    margin: 0;
+    border-radius: 0;
+}
+
+/* Logo and branding */
+.wy-side-nav-search {
+    background-color: #2980B9;
+}
+
+.wy-side-nav-search > a {
+    color: white;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+/* Improve version badge */
+.wy-side-nav-search .version {
+    color: rgba(255, 255, 255, 0.8);
+}

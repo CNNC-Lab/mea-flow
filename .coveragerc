@@ -1,0 +1,46 @@
+[run]
+source = src/mea_flow
+branch = True
+omit = 
+    */tests/*
+    */test_*
+    setup.py
+    */site-packages/*
+    */__pycache__/*
+    */migrations/*
+    */venv/*
+    */.venv/*
+
+[report]
+# Regexes for lines to exclude from consideration
+exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
+
+    # Don't complain about missing debug-only code:
+    def __repr__
+    if self\.debug
+
+    # Don't complain if tests don't hit defensive assertion code:
+    raise AssertionError
+    raise NotImplementedError
+
+    # Don't complain if non-runnable code isn't run:
+    if 0:
+    if __name__ == .__main__.:
+
+    # Don't complain about abstract methods, they aren't run:
+    @(abc\.)?abstractmethod
+
+    # Don't complain about type checking code
+    if TYPE_CHECKING:
+
+ignore_errors = True
+show_missing = True
+precision = 2
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml

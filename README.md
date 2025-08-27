@@ -1,5 +1,13 @@
 # MEA-Flow: Neural Population Dynamics Analysis for Multi-Electrode Arrays
 
+[![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/github/license/CNNC-Lab/mea-flow)](https://github.com/CNNC-Lab/mea-flow/blob/main/LICENSE)
+[![CI](https://github.com/CNNC-Lab/mea-flow/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/CNNC-Lab/mea-flow/actions)
+[![Documentation](https://readthedocs.org/projects/mea-flow/badge/?version=latest)](https://mea-flow.readthedocs.io)
+[![Coverage](https://codecov.io/gh/CNNC-Lab/mea-flow/branch/main/graph/badge.svg)](https://codecov.io/gh/CNNC-Lab/mea-flow)
+[![PyPI](https://img.shields.io/pypi/v/mea-flow)](https://pypi.org/project/mea-flow/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 MEA-Flow is a comprehensive Python package for analyzing multi-electrode array (MEA) data with a focus on neural population dynamics, manifold learning, and comparative analysis across experimental conditions.
 
 ## 🚀 Key Features
