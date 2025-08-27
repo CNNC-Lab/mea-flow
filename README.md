@@ -33,7 +33,7 @@ MEA-Flow is a comprehensive Python package for analyzing multi-electrode array (
 
 ## 🛠️ Installation
 
-MEA-Flow uses `uv` for fast and reliable dependency management.
+MEA-Flow uses `uv` for fast and reliable dependency management with optional dependencies for enhanced functionality.
 
 ### Prerequisites
 - Python 3.10 or higher
@@ -46,7 +46,7 @@ MEA-Flow uses `uv` for fast and reliable dependency management.
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Clone and set up MEA-Flow
-git clone https://github.com/username/mea-flow.git
+git clone https://github.com/CNNC-Lab/mea-flow.git
 cd mea-flow
 
 # Create virtual environment and install
@@ -54,19 +54,62 @@ uv venv
 source .venv/bin/activate  # Linux/macOS
 # .venv\Scripts\activate   # Windows
 
-# Install dependencies
+# Basic installation (core functionality)
 uv pip install -e .
+
+# OR install with all optional dependencies
+uv pip install -e ".[full]"
 
 # Verify installation
 python -c "import mea_flow; print('MEA-Flow installed successfully!')"
 ```
 
+### Installation Options
+
+**Basic Installation** (recommended for most users):
+```bash
+uv pip install -e .
+```
+Installs core functionality with all essential features.
+
+**Full Installation** (for advanced users):
+```bash
+uv pip install -e ".[full]"
+```
+Includes optional dependencies like PySpike and UMAP-learn.
+
+**Development Installation**:
+```bash
+uv pip install -e ".[dev,notebooks]"
+```
+Includes testing, documentation, and Jupyter notebook support.
+
 ### Dependencies
 
-MEA-Flow automatically handles the following key dependencies:
-- **Core**: `numpy`, `scipy`, `pandas`, `matplotlib`, `seaborn`
-- **Analysis**: `scikit-learn`, `pyspike` (for spike train analysis)
-- **Manifold Learning**: `umap-learn` (optional, for UMAP)
+**Core Dependencies** (always installed):
+- **Computation**: `numpy`, `scipy`, `pandas`, `scikit-learn`
+- **Visualization**: `matplotlib`, `seaborn` 
+- **Data Handling**: `h5py`, `tqdm`, `joblib`
+
+**Optional Dependencies** (install with `[full]`):
+- **PySpike**: Advanced spike train distance measures
+- **UMAP-learn**: UMAP manifold learning method
+
+### Troubleshooting
+
+If you encounter installation issues with optional dependencies:
+
+1. **PySpike build errors**: PySpike requires compilation. Use the basic installation:
+   ```bash
+   uv pip install -e .
+   ```
+   The library will work without PySpike, using alternative distance measures.
+
+2. **UMAP issues**: Install basic version and add UMAP separately if needed:
+   ```bash
+   uv pip install -e .
+   pip install umap-learn
+   ```
 - **Data I/O**: `h5py` (for HDF5 support)
 
 ## 🚀 Quick Example
