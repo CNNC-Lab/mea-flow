@@ -29,7 +29,7 @@ def check_core_imports():
     
     try:
         from mea_flow.data import loaders
-        from mea_flow.analysis import metrics, activity, synchrony, regularity, bursts
+        from mea_flow.analysis import metrics, activity, synchrony, regularity, burst_analysis
         from mea_flow.manifold import analysis, embedding
         from mea_flow.visualization import plotter
         print("✅ All modules imported successfully")
@@ -45,11 +45,11 @@ def check_dependencies():
     
     # Core dependencies
     core_deps = {
-        'numpy': 'np',
-        'scipy': 'scipy',
-        'pandas': 'pd', 
+        'numpy': 'numpy',
+        'scipy': 'scipy', 
+        'pandas': 'pandas',
         'matplotlib': 'matplotlib',
-        'seaborn': 'sns',
+        'seaborn': 'seaborn',
         'sklearn': 'sklearn',
         'h5py': 'h5py',
         'tqdm': 'tqdm',
@@ -121,17 +121,9 @@ def test_basic_functionality():
         from mea_flow import ManifoldAnalysis
         manifold = ManifoldAnalysis()
         
-        # Use only basic methods to avoid optional dependency issues
-        config = type('Config', (), {
-            'methods': ['PCA', 'MDS'],
-            'tau': 0.02,
-            'dt': 0.001,
-            'max_components': 3
-        })()
-        
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            pop_results = manifold.analyze_population_dynamics(spike_list, config=config)
+            pop_results = manifold.analyze_population_dynamics(spike_list)
         print("✅ Manifold analysis successful")
         
         print("🎉 All basic functionality tests passed!")

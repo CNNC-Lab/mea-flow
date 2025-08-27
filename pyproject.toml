@@ -10,7 +10,7 @@ authors = [
     {name = "MEA-Flow Team", email = "contact@mea-flow.org"}
 ]
 readme = "README.md"
-license = {file = "LICENSE"}
+license = {text = "MIT"}
 requires-python = ">=3.10"
 keywords = ["neuroscience", "MEA", "multi-electrode-array", "manifold-learning", "population-dynamics"]
 classifiers = [
