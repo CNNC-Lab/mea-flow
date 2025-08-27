@@ -1,6 +1,11 @@
 MEA-Flow: Neural Population Dynamics Analysis
 =============================================
 
+.. image:: assets/logo.png
+   :width: 400px
+   :align: center
+   :alt: MEA-Flow Logo
+
 MEA-Flow is a comprehensive Python package for analyzing multi-electrode array (MEA) data with a focus on neural population dynamics, manifold learning, and comparative analysis across experimental conditions.
 
 .. image:: https://img.shields.io/badge/python-3.10+-blue.svg
@@ -109,11 +114,7 @@ Documentation Structure
    changelog
    license
 
-.. toctree::
-   :maxdepth: 1
-   :caption: Tutorials & Examples
 
-   notebooks/01_mea_flow_tutorial
 
 Indices and tables
 ==================
