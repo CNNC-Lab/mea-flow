@@ -81,6 +81,8 @@ Includes optional dependencies like PySpike and UMAP-learn.
 **Development Installation**:
 ```bash
 uv pip install -e ".[dev,notebooks]"
+# OR with new uv dependency groups:
+uv sync --group dev
 ```
 Includes testing, documentation, and Jupyter notebook support.
 
@@ -94,6 +96,25 @@ Includes testing, documentation, and Jupyter notebook support.
 **Optional Dependencies** (install with `[full]`):
 - **PySpike**: Advanced spike train distance measures
 - **UMAP-learn**: UMAP manifold learning method
+
+### Using uv (Recommended)
+
+If you have uv installed, you can use the modern dependency management:
+
+```bash
+# Install and sync all dependencies
+uv sync
+
+# Run with uv (automatically manages virtual environment)
+uv run python verify_install.py
+
+# Run Jupyter with all dependencies
+uv run jupyter lab
+
+# Add new dependencies
+uv add package-name
+uv add --dev dev-package-name
+```
 
 ### Troubleshooting
 
@@ -109,6 +130,12 @@ If you encounter installation issues with optional dependencies:
    ```bash
    uv pip install -e .
    pip install umap-learn
+   ```
+
+3. **uv.lock parse errors**: Remove the lock file and regenerate:
+   ```bash
+   rm uv.lock
+   uv lock
    ```
 - **Data I/O**: `h5py` (for HDF5 support)
 
