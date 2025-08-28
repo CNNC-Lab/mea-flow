@@ -23,9 +23,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
-    from mea_flow.data import SpikeData, MEARecording
-    from mea_flow.analysis import ActivityAnalyzer, BurstDetector
-    from mea_flow.visualization import ActivityPlotter
+    from mea_flow.data import SpikeList
+    from mea_flow.analysis import MEAMetrics
+    from mea_flow.visualization import MEAPlotter
 except ImportError as e:
     logger.error(f"Failed to import MEA-Flow modules: {e}")
     logger.error("Please ensure MEA-Flow is installed: pip install -e .")
@@ -98,8 +98,8 @@ class WellPlateAnalyzer:
 
 def create_well_plate_data(analyzer: WellPlateAnalyzer, 
                           experimental_design: Dict,
-                          duration: float = 300.0,
-                          seed: int = 42) -> Dict[str, MEARecording]:
+                          duration: float = 30.0,
+                          seed: int = 42) -> Dict[str, SpikeList]:
     """
     Create synthetic MEA data for a multi-well plate experiment.
     
@@ -116,8 +116,8 @@ def create_well_plate_data(analyzer: WellPlateAnalyzer,
         
     Returns
     -------
-    Dict[str, MEARecording]
-        Dictionary mapping well IDs to MEA recordings
+    Dict[str, SpikeList]
+        Dictionary mapping well IDs to spike lists
     """
     np.random.seed(seed)
     logger.info("Creating synthetic well plate MEA data")
@@ -157,7 +157,7 @@ def create_well_plate_data(analyzer: WellPlateAnalyzer,
                              well_col == 0 or well_col == analyzer.well_layout['columns']-1) else 1.0
         
         # Generate spike data for electrodes in this well
-        spike_trains = {}
+        spike_data = []
         
         for electrode_id in range(analyzer.well_layout['electrodes_per_well']):
             electrode_name = f"Well_{well_id}_E{electrode_id+1:02d}"
@@ -200,119 +200,117 @@ def create_well_plate_data(analyzer: WellPlateAnalyzer,
                         jittered_time = sync_time + np.random.normal(0, 0.008)  # 8ms jitter
                         spike_times.append(max(0, jittered_time))
             
-            # Sort and convert to samples
+            # Sort spike times and add to data
             spike_times = np.array(sorted(spike_times))
-            spike_samples = (spike_times * sampling_rate).astype(int)
             
-            # Create SpikeData object
-            spike_trains[electrode_name] = SpikeData(
-                spike_times=spike_times,
-                spike_samples=spike_samples,
-                channel_id=electrode_name,
-                sampling_rate=sampling_rate
-            )
+            # Add spikes for this electrode
+            for spike_time in spike_times:
+                spike_data.append((electrode_id, spike_time))
         
-        # Create MEA recording for this well
-        well_recordings[well_id] = MEARecording(
-            spike_trains=spike_trains,
-            duration=duration,
-            sampling_rate=sampling_rate,
-            metadata={
-                'well_id': well_id,
-                'condition': condition,
-                'concentration': concentration,
-                'well_position': (well_row, well_col),
-                'edge_effect': edge_effect,
-                'created_by': 'well_plate_analysis.py'
-            }
+        # Create SpikeList for this well
+        spike_list = SpikeList(
+            spike_data=spike_data,
+            recording_length=duration
         )
+        
+        # Store metadata separately
+        spike_list.metadata = {
+            'well_id': well_id,
+            'condition': condition,
+            'concentration': concentration,
+            'well_position': (well_row, well_col),
+            'edge_effect': edge_effect,
+            'created_by': 'well_plate_analysis.py'
+        }
+        
+        well_recordings[well_id] = spike_list
     
     logger.info(f"Created recordings for {len(well_recordings)} wells")
     return well_recordings
 
 
-def analyze_well_activity(recording: MEARecording) -> Dict:
+def analyze_well_activity(spike_list: SpikeList) -> Dict:
     """
     Analyze neural activity for a single well.
     
     Parameters
     ----------
-    recording : MEARecording
-        MEA recording for one well
+    spike_list : SpikeList
+        Spike data for one well
         
     Returns
     -------
     Dict
         Analysis results for the well
     """
-    well_id = recording.metadata['well_id']
+    well_id = spike_list.metadata['well_id']
     logger.debug(f"Analyzing activity for well {well_id}")
     
-    analyzer = ActivityAnalyzer()
-    burst_detector = BurstDetector()
+    metrics = MEAMetrics()
     
     results = {
         'well_id': well_id,
-        'condition': recording.metadata.get('condition', 'unknown'),
-        'concentration': recording.metadata.get('concentration', 0),
+        'condition': spike_list.metadata.get('condition', 'unknown'),
+        'concentration': spike_list.metadata.get('concentration', 0),
         'electrode_metrics': {},
         'well_summary': {}
     }
     
-    # Analyze each electrode in the well
-    firing_rates = []
-    burst_rates = []
-    active_electrodes = 0
-    
-    for electrode_id, spike_data in recording.spike_trains.items():
-        # Basic activity metrics
-        firing_rate = analyzer.calculate_firing_rate(spike_data)
-        firing_rates.append(firing_rate)
+    # Compute metrics for the well
+    try:
+        results_df = metrics.compute_all_metrics(spike_list, grouping='channel')
         
-        # Burst detection
-        try:
-            bursts = burst_detector.detect_bursts(spike_data)
-            if bursts:
-                burst_rate = len(bursts) / recording.duration * 60  # per minute
-                avg_burst_duration = np.mean([b.duration for b in bursts])
-                avg_spikes_per_burst = np.mean([len(b.spike_times) for b in bursts])
-                burst_rates.append(burst_rate)
-            else:
-                burst_rate = avg_burst_duration = avg_spikes_per_burst = 0
-                burst_rates.append(0)
-        except Exception as e:
-            logger.warning(f"Burst detection failed for {electrode_id}: {e}")
-            burst_rate = avg_burst_duration = avg_spikes_per_burst = 0
-            burst_rates.append(0)
+        # Extract metrics from results
+        firing_rates = []
+        active_electrodes = 0
         
-        # Activity threshold (consider active if firing rate > 0.1 Hz)
-        is_active = firing_rate > 0.1
-        if is_active:
-            active_electrodes += 1
-        
-        # Store electrode-specific results
-        results['electrode_metrics'][electrode_id] = {
-            'firing_rate': firing_rate,
-            'burst_rate': burst_rate,
-            'avg_burst_duration': avg_burst_duration,
-            'avg_spikes_per_burst': avg_spikes_per_burst,
-            'is_active': is_active,
-            'total_spikes': len(spike_data.spike_times)
-        }
+        for channel_id in spike_list.get_active_channels():
+            spike_train = spike_list.spike_trains[channel_id]
+            
+            # Basic firing rate
+            firing_rate = len(spike_train.spike_times) / spike_list.recording_length
+            firing_rates.append(firing_rate)
+            
+            # Activity threshold
+            is_active = firing_rate > 0.1
+            if is_active:
+                active_electrodes += 1
+            
+            # Store electrode-specific results
+            results['electrode_metrics'][f'electrode_{channel_id}'] = {
+                'firing_rate': firing_rate,
+                'burst_rate': 0,  # Simplified for demo
+                'avg_burst_duration': 0,
+                'avg_spikes_per_burst': 0,
+                'is_active': is_active,
+                'total_spikes': len(spike_train.spike_times)
+            }
+            
+    except Exception as e:
+        logger.warning(f"Metrics computation failed: {e}")
+        firing_rates = [0]
+        active_electrodes = 0
     
     # Calculate well-level summary statistics
-    results['well_summary'] = {
-        'mean_firing_rate': np.mean(firing_rates),
-        'std_firing_rate': np.std(firing_rates),
-        'max_firing_rate': np.max(firing_rates),
-        'mean_burst_rate': np.mean(burst_rates),
-        'std_burst_rate': np.std(burst_rates),
-        'active_electrodes': active_electrodes,
-        'active_electrode_fraction': active_electrodes / len(recording.spike_trains),
-        'total_spikes': sum(len(spike_data.spike_times) 
-                          for spike_data in recording.spike_trains.values()),
-        'cv_firing_rate': np.std(firing_rates) / np.mean(firing_rates) if np.mean(firing_rates) > 0 else 0
-    }
+    if len(firing_rates) > 0:
+        results['well_summary'] = {
+            'mean_firing_rate': np.mean(firing_rates),
+            'std_firing_rate': np.std(firing_rates),
+            'max_firing_rate': np.max(firing_rates),
+            'mean_burst_rate': 0,  # Simplified for demo
+            'std_burst_rate': 0,
+            'active_electrodes': active_electrodes,
+            'active_electrode_fraction': active_electrodes / max(1, len(spike_list.spike_trains)),
+            'total_spikes': sum(len(spike_train.spike_times) 
+                              for spike_train in spike_list.spike_trains.values()),
+            'cv_firing_rate': np.std(firing_rates) / np.mean(firing_rates) if np.mean(firing_rates) > 0 else 0
+        }
+    else:
+        results['well_summary'] = {
+            'mean_firing_rate': 0, 'std_firing_rate': 0, 'max_firing_rate': 0,
+            'mean_burst_rate': 0, 'std_burst_rate': 0, 'active_electrodes': 0,
+            'active_electrode_fraction': 0, 'total_spikes': 0, 'cv_firing_rate': 0
+        }
     
     return results
 
@@ -745,7 +743,7 @@ def main():
     logger.info("Starting Well Plate Analysis Workflow")
     
     # Create output directory
-    output_dir = Path("output/well_plate_analysis")
+    output_dir = Path("examples/output/well_plate_analysis")
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Step 1: Setup well plate analyzer
@@ -794,7 +792,7 @@ def main():
     well_recordings = create_well_plate_data(
         analyzer=analyzer,
         experimental_design=experimental_design,
-        duration=300.0,  # 5 minutes per well
+        duration=30.0,  # 30 seconds per well (demo)
         seed=42
     )
     
@@ -802,8 +800,8 @@ def main():
     logger.info("Step 4: Analyzing neural activity for each well")
     well_results = {}
     
-    for well_id, recording in well_recordings.items():
-        well_results[well_id] = analyze_well_activity(recording)
+    for well_id, spike_list in well_recordings.items():
+        well_results[well_id] = analyze_well_activity(spike_list)
     
     # Step 5: Perform dose-response analysis
     logger.info("Step 5: Performing dose-response analysis")

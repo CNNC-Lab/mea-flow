@@ -22,10 +22,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
-    from mea_flow.data import SpikeData, MEARecording
-    from mea_flow.analysis import ActivityAnalyzer, BurstDetector
-    from mea_flow.manifold import ManifoldAnalyzer
-    from mea_flow.visualization import ActivityPlotter, ManifoldPlotter
+    from mea_flow.data import SpikeList
+    from mea_flow.analysis import MEAMetrics
+    from mea_flow.manifold import ManifoldAnalysis
+    from mea_flow.visualization import MEAPlotter
 except ImportError as e:
     logger.error(f"Failed to import MEA-Flow modules: {e}")
     logger.error("Please ensure MEA-Flow is installed: pip install -e .")
@@ -33,7 +33,7 @@ except ImportError as e:
 
 
 def create_condition_data(condition_name: str, n_channels: int = 16, 
-                         duration: float = 300.0, seed: int = None) -> MEARecording:
+                         duration: float = 300.0, seed: int = None) -> SpikeList:
     """
     Create synthetic MEA data for a specific experimental condition.
     
@@ -50,8 +50,8 @@ def create_condition_data(condition_name: str, n_channels: int = 16,
         
     Returns
     -------
-    MEARecording
-        Synthetic MEA recording for the condition
+    SpikeList
+        Synthetic MEA spike data for the condition
     """
     if seed is not None:
         np.random.seed(seed)
@@ -69,8 +69,7 @@ def create_condition_data(condition_name: str, n_channels: int = 16,
     params = condition_params.get(condition_name.lower(), condition_params['control'])
     
     # Generate spike data for each channel
-    spike_trains = {}
-    sampling_rate = 20000.0  # 20 kHz
+    spike_data = {}
     
     for channel_id in range(n_channels):
         # Create channel-specific activity pattern
@@ -104,426 +103,164 @@ def create_condition_data(condition_name: str, n_channels: int = 16,
             sync_times = np.random.uniform(0, duration, int(duration * 0.5))
             spike_times.extend(sync_times)
         
-        # Convert to sample indices and sort
+        # Sort spike times
         spike_times = np.array(sorted(spike_times))
-        spike_samples = (spike_times * sampling_rate).astype(int)
-        
-        # Create SpikeData object
-        spike_trains[f"Channel_{channel_id:02d}"] = SpikeData(
-            spike_times=spike_times,
-            spike_samples=spike_samples,
-            channel_id=f"Channel_{channel_id:02d}",
-            sampling_rate=sampling_rate
-        )
+        spike_data[channel_id] = spike_times
     
-    # Create MEA recording
-    recording = MEARecording(
-        spike_trains=spike_trains,
-        duration=duration,
-        sampling_rate=sampling_rate,
-        metadata={
-            'condition': condition_name,
-            'n_channels': n_channels,
-            'created_by': 'cross_condition_comparison.py'
-        }
-    )
+    # Create SpikeList
+    spike_list = SpikeList(spike_data)
     
-    logger.info(f"Created recording with {len(spike_trains)} channels, "
+    logger.info(f"Created spike data with {len(spike_data)} channels, "
                 f"duration: {duration}s")
     
-    return recording
+    return spike_list
 
 
-def analyze_condition_activity(recording: MEARecording, condition_name: str) -> dict:
+def analyze_condition_activity(spike_list: SpikeList, condition_name: str) -> dict:
     """
-    Perform comprehensive activity analysis for a condition.
+    Perform basic activity analysis for a condition.
     
     Parameters
     ----------
-    recording : MEARecording
-        MEA recording data
+    spike_list : SpikeList
+        MEA spike data
     condition_name : str
         Name of the experimental condition
         
     Returns
     -------
     dict
-        Analysis results including firing rates, burst metrics, and synchrony
+        Basic analysis results
     """
     logger.info(f"Analyzing activity for condition: {condition_name}")
     
-    analyzer = ActivityAnalyzer()
-    burst_detector = BurstDetector()
-    
-    results = {
-        'condition': condition_name,
-        'firing_rates': {},
-        'burst_metrics': {},
-        'synchrony_measures': {},
-        'network_bursts': None
-    }
-    
-    # Calculate firing rates for each channel
-    for channel_id, spike_data in recording.spike_trains.items():
-        firing_rate = analyzer.calculate_firing_rate(spike_data)
-        results['firing_rates'][channel_id] = firing_rate
-    
-    # Detect bursts for each channel
-    for channel_id, spike_data in recording.spike_trains.items():
-        try:
-            bursts = burst_detector.detect_bursts(spike_data)
-            if bursts:
-                burst_rate = len(bursts) / recording.duration * 60  # bursts per minute
-                avg_burst_duration = np.mean([b.duration for b in bursts])
-                avg_spikes_per_burst = np.mean([len(b.spike_times) for b in bursts])
-                
-                results['burst_metrics'][channel_id] = {
-                    'burst_rate': burst_rate,
-                    'avg_duration': avg_burst_duration,
-                    'avg_spikes_per_burst': avg_spikes_per_burst,
-                    'n_bursts': len(bursts)
-                }
-        except Exception as e:
-            logger.warning(f"Burst detection failed for {channel_id}: {e}")
-            results['burst_metrics'][channel_id] = {
-                'burst_rate': 0.0,
-                'avg_duration': 0.0,
-                'avg_spikes_per_burst': 0.0,
-                'n_bursts': 0
-            }
-    
-    # Calculate synchrony measures
     try:
-        spike_trains_list = list(recording.spike_trains.values())
-        if len(spike_trains_list) >= 2:
-            synchrony = analyzer.calculate_synchrony(spike_trains_list[:2])
-            results['synchrony_measures']['pairwise'] = synchrony
-    except Exception as e:
-        logger.warning(f"Synchrony calculation failed: {e}")
-        results['synchrony_measures']['pairwise'] = 0.0
-    
-    # Detect network bursts
-    try:
-        network_bursts = burst_detector.detect_network_bursts(
-            list(recording.spike_trains.values())
-        )
-        results['network_bursts'] = {
-            'count': len(network_bursts) if network_bursts else 0,
-            'rate': (len(network_bursts) / recording.duration * 60 
-                    if network_bursts else 0.0),
-            'bursts': network_bursts
+        # Simple analysis without heavy computations
+        active_channels = spike_list.get_active_channels()
+        total_spikes = 0
+        firing_rates = {}
+        
+        # Calculate basic firing rates
+        for channel_id in active_channels:
+            spike_train = spike_list.spike_trains[channel_id]
+            n_spikes = len(spike_train.spike_times)
+            total_spikes += n_spikes
+            
+            # Estimate duration from spike times
+            if n_spikes > 0:
+                duration = max(spike_train.spike_times) if len(spike_train.spike_times) > 0 else 30.0
+                firing_rate = n_spikes / duration if duration > 0 else 0
+            else:
+                firing_rate = 0
+            
+            firing_rates[channel_id] = firing_rate
+        
+        mean_firing_rate = sum(firing_rates.values()) / len(firing_rates) if firing_rates else 0
+        
+        analysis_results = {
+            'condition': condition_name,
+            'summary': {
+                'total_spikes': total_spikes,
+                'mean_firing_rate': mean_firing_rate,
+                'active_channels': len(active_channels)
+            },
+            'firing_rates': firing_rates
         }
+        
+        return analysis_results
+        
     except Exception as e:
-        logger.warning(f"Network burst detection failed: {e}")
-        results['network_bursts'] = {'count': 0, 'rate': 0.0, 'bursts': []}
-    
-    return results
+        logger.error(f"Analysis failed for condition {condition_name}: {e}")
+        return {
+            'condition': condition_name,
+            'error': str(e),
+            'summary': {'total_spikes': 0, 'mean_firing_rate': 0, 'active_channels': 0},
+            'firing_rates': {}
+        }
 
 
-def perform_manifold_analysis(recordings: dict) -> dict:
+def compare_conditions(condition_results: dict) -> dict:
     """
-    Perform manifold learning analysis across conditions.
+    Compare analysis results across conditions.
     
     Parameters
     ----------
-    recordings : dict
-        Dictionary of condition_name -> MEARecording
+    condition_results : dict
+        Dictionary of condition_name -> analysis results
         
     Returns
     -------
     dict
-        Manifold analysis results
+        Comparison results and statistics
     """
-    logger.info("Performing manifold learning analysis across conditions")
     
-    manifold_analyzer = ManifoldAnalyzer()
+    comparison_results = {}
+    conditions = list(condition_results.keys())
     
-    # Prepare feature matrix
-    features = []
-    labels = []
-    condition_names = []
+    # Compare key metrics across conditions
+    metrics_to_compare = ['total_spikes', 'mean_firing_rate', 'active_channels']
     
-    for condition_name, recording in recordings.items():
-        logger.info(f"Extracting features for condition: {condition_name}")
-        
-        # Extract activity features for each channel
-        for channel_id, spike_data in recording.spike_trains.items():
-            # Basic activity features
-            firing_rate = len(spike_data.spike_times) / recording.duration
-            
-            # ISI statistics
-            if len(spike_data.spike_times) > 1:
-                isis = np.diff(spike_data.spike_times)
-                isi_mean = np.mean(isis)
-                isi_std = np.std(isis)
-                isi_cv = isi_std / isi_mean if isi_mean > 0 else 0
+    for metric in metrics_to_compare:
+        values = []
+        for condition in conditions:
+            if 'summary' in condition_results[condition]:
+                values.append(condition_results[condition]['summary'].get(metric, 0))
             else:
-                isi_mean = isi_std = isi_cv = 0
-            
-            # Binned activity (1-second bins)
-            bins = np.arange(0, recording.duration + 1, 1.0)
-            activity_profile, _ = np.histogram(spike_data.spike_times, bins=bins)
-            activity_variance = np.var(activity_profile)
-            
-            # Combine features
-            feature_vector = [
-                firing_rate,
-                isi_mean,
-                isi_std,
-                isi_cv,
-                activity_variance,
-                np.max(activity_profile),
-                np.mean(activity_profile)
-            ]
-            
-            features.append(feature_vector)
-            labels.append(condition_name)
-            condition_names.append(f"{condition_name}_{channel_id}")
+                values.append(0)
+        
+        comparison_results[metric] = {
+            'conditions': conditions,
+            'values': values,
+            'mean': np.mean(values),
+            'std': np.std(values)
+        }
     
-    features_array = np.array(features)
-    
-    # Perform dimensionality reduction
-    methods = ['pca', 'tsne', 'umap']
-    manifold_results = {}
-    
-    for method in methods:
-        try:
-            logger.info(f"Applying {method.upper()} dimensionality reduction")
-            
-            if method == 'pca':
-                embedding = manifold_analyzer.apply_pca(features_array, n_components=2)
-            elif method == 'tsne':
-                embedding = manifold_analyzer.apply_tsne(features_array, n_components=2)
-            elif method == 'umap':
-                try:
-                    embedding = manifold_analyzer.apply_umap(features_array, n_components=2)
-                except ImportError:
-                    logger.warning("UMAP not available, skipping")
-                    continue
-            
-            manifold_results[method] = {
-                'embedding': embedding,
-                'labels': labels,
-                'condition_names': condition_names
-            }
-            
-        except Exception as e:
-            logger.error(f"Failed to apply {method}: {e}")
-    
-    return manifold_results
+    return comparison_results
 
 
-def create_comparison_plots(analysis_results: dict, manifold_results: dict, 
-                           output_dir: Path) -> None:
+def create_comparison_plots(condition_results: dict, comparison_results: dict, output_dir: Path):
     """
-    Create comprehensive comparison plots.
+    Create comparison plots across conditions.
     
     Parameters
     ----------
-    analysis_results : dict
+    condition_results : dict
         Analysis results for each condition
-    manifold_results : dict
-        Manifold learning results
+    comparison_results : dict
+        Comparison statistics
     output_dir : Path
         Output directory for plots
     """
     logger.info("Creating comparison plots")
     
     output_dir.mkdir(parents=True, exist_ok=True)
+    plotter = MEAPlotter()
     
-    # 1. Firing rate comparison
-    fig, ax = plt.subplots(figsize=(10, 6))
+    # Create comparison bar plots
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     
-    conditions = list(analysis_results.keys())
-    firing_rates_by_condition = {}
+    metrics = ['total_spikes', 'mean_firing_rate', 'active_channels']
+    titles = ['Total Spikes', 'Mean Firing Rate (Hz)', 'Active Channels']
     
-    for condition in conditions:
-        rates = list(analysis_results[condition]['firing_rates'].values())
-        firing_rates_by_condition[condition] = rates
-    
-    # Box plot of firing rates
-    data_to_plot = [firing_rates_by_condition[condition] for condition in conditions]
-    box_plot = ax.boxplot(data_to_plot, labels=conditions, patch_artist=True)
-    
-    # Color the boxes
-    colors = plt.cm.Set3(np.linspace(0, 1, len(conditions)))
-    for patch, color in zip(box_plot['boxes'], colors):
-        patch.set_facecolor(color)
-    
-    ax.set_ylabel('Firing Rate (Hz)')
-    ax.set_title('Firing Rate Comparison Across Conditions')
-    ax.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    plt.savefig(output_dir / 'firing_rate_comparison.png', dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    # 2. Burst metrics comparison
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    axes = axes.flatten()
-    
-    metrics = ['burst_rate', 'avg_duration', 'avg_spikes_per_burst', 'n_bursts']
-    metric_labels = ['Burst Rate (per min)', 'Avg Duration (s)', 
-                    'Avg Spikes per Burst', 'Number of Bursts']
-    
-    for i, (metric, label) in enumerate(zip(metrics, metric_labels)):
-        data_to_plot = []
-        for condition in conditions:
-            values = []
-            for channel_metrics in analysis_results[condition]['burst_metrics'].values():
-                if isinstance(channel_metrics, dict):
-                    values.append(channel_metrics.get(metric, 0))
-            data_to_plot.append(values)
-        
-        if any(len(d) > 0 for d in data_to_plot):
-            box_plot = axes[i].boxplot(data_to_plot, labels=conditions, patch_artist=True)
+    for i, (metric, title) in enumerate(zip(metrics, titles)):
+        if metric in comparison_results:
+            conditions = comparison_results[metric]['conditions']
+            values = comparison_results[metric]['values']
             
-            # Color the boxes
-            for patch, color in zip(box_plot['boxes'], colors):
-                patch.set_facecolor(color)
-        
-        axes[i].set_ylabel(label)
-        axes[i].set_title(f'{label} Comparison')
-        axes[i].grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    plt.savefig(output_dir / 'burst_metrics_comparison.png', dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    # 3. Network burst comparison
-    fig, ax = plt.subplots(figsize=(8, 6))
-    
-    network_burst_rates = []
-    for condition in conditions:
-        rate = analysis_results[condition]['network_bursts']['rate']
-        network_burst_rates.append(rate)
-    
-    bars = ax.bar(conditions, network_burst_rates, color=colors[:len(conditions)])
-    ax.set_ylabel('Network Burst Rate (per min)')
-    ax.set_title('Network Burst Rate Comparison')
-    ax.grid(True, alpha=0.3, axis='y')
-    
-    # Add value labels on bars
-    for bar, rate in zip(bars, network_burst_rates):
-        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
-                f'{rate:.2f}', ha='center', va='bottom')
-    
-    plt.tight_layout()
-    plt.savefig(output_dir / 'network_burst_comparison.png', dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    # 4. Manifold learning plots
-    if manifold_results:
-        n_methods = len(manifold_results)
-        fig, axes = plt.subplots(1, n_methods, figsize=(5*n_methods, 5))
-        if n_methods == 1:
-            axes = [axes]
-        
-        for i, (method, results) in enumerate(manifold_results.items()):
-            embedding = results['embedding']
-            labels = results['labels']
-            
-            # Create color map for conditions
-            unique_conditions = list(set(labels))
-            color_map = dict(zip(unique_conditions, 
-                               plt.cm.Set1(np.linspace(0, 1, len(unique_conditions)))))
-            
-            # Plot each condition
-            for condition in unique_conditions:
-                mask = np.array(labels) == condition
-                axes[i].scatter(embedding[mask, 0], embedding[mask, 1], 
-                              c=[color_map[condition]], label=condition, alpha=0.6)
-            
-            axes[i].set_title(f'{method.upper()} Embedding')
-            axes[i].legend()
+            bars = axes[i].bar(conditions, values)
+            axes[i].set_title(title)
+            axes[i].set_ylabel(title)
+            axes[i].tick_params(axis='x', rotation=45)
             axes[i].grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        plt.savefig(output_dir / 'manifold_comparison.png', dpi=300, bbox_inches='tight')
-        plt.close()
-    
-    logger.info(f"Plots saved to {output_dir}")
-
-
-def generate_statistical_report(analysis_results: dict, output_dir: Path) -> None:
-    """
-    Generate statistical comparison report.
-    
-    Parameters
-    ----------
-    analysis_results : dict
-        Analysis results for each condition
-    output_dir : Path
-        Output directory for the report
-    """
-    logger.info("Generating statistical comparison report")
-    
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Collect data for statistical analysis
-    data_records = []
-    
-    for condition, results in analysis_results.items():
-        for channel_id, firing_rate in results['firing_rates'].items():
-            record = {
-                'condition': condition,
-                'channel': channel_id,
-                'firing_rate': firing_rate,
-                'synchrony': results['synchrony_measures'].get('pairwise', 0),
-                'network_burst_rate': results['network_bursts']['rate']
-            }
             
-            # Add burst metrics if available
-            if channel_id in results['burst_metrics']:
-                burst_metrics = results['burst_metrics'][channel_id]
-                if isinstance(burst_metrics, dict):
-                    record.update({
-                        'burst_rate': burst_metrics.get('burst_rate', 0),
-                        'avg_burst_duration': burst_metrics.get('avg_duration', 0),
-                        'avg_spikes_per_burst': burst_metrics.get('avg_spikes_per_burst', 0)
-                    })
-            
-            data_records.append(record)
+            # Add value labels on bars
+            for bar, value in zip(bars, values):
+                axes[i].text(bar.get_x() + bar.get_width()/2, bar.get_height(),
+                           f'{value:.1f}', ha='center', va='bottom')
     
-    # Create DataFrame
-    df = pd.DataFrame(data_records)
-    
-    # Generate summary statistics
-    summary_stats = df.groupby('condition').agg({
-        'firing_rate': ['mean', 'std', 'count'],
-        'burst_rate': ['mean', 'std'],
-        'network_burst_rate': ['mean', 'std'],
-        'synchrony': ['mean', 'std']
-    }).round(3)
-    
-    # Save summary statistics
-    with open(output_dir / 'statistical_summary.txt', 'w') as f:
-        f.write("MEA-Flow Cross-Condition Statistical Summary\n")
-        f.write("=" * 50 + "\n\n")
-        f.write(f"Analysis performed on: {pd.Timestamp.now()}\n\n")
-        f.write("Summary Statistics by Condition:\n")
-        f.write(str(summary_stats))
-        f.write("\n\n")
-        
-        # Add condition comparison
-        conditions = df['condition'].unique()
-        if len(conditions) > 1:
-            f.write("Pairwise Comparisons (Firing Rate):\n")
-            f.write("-" * 35 + "\n")
-            
-            for i, cond1 in enumerate(conditions):
-                for cond2 in conditions[i+1:]:
-                    data1 = df[df['condition'] == cond1]['firing_rate']
-                    data2 = df[df['condition'] == cond2]['firing_rate']
-                    
-                    # Simple statistical comparison
-                    mean_diff = data1.mean() - data2.mean()
-                    f.write(f"{cond1} vs {cond2}: Δ = {mean_diff:.3f} Hz\n")
-    
-    # Save detailed data
-    df.to_csv(output_dir / 'detailed_analysis_results.csv', index=False)
-    
-    logger.info(f"Statistical report saved to {output_dir}")
+    plt.tight_layout()
+    plotter.save_figure(fig, str(output_dir / 'condition_comparison.png'))
+    plt.close(fig)
 
 
 def main():
@@ -531,63 +268,59 @@ def main():
     logger.info("Starting Cross-Condition Comparison Analysis")
     
     # Create output directory
-    output_dir = Path("output/cross_condition_comparison")
+    output_dir = Path("examples/output/cross_condition_comparison")
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Define experimental conditions
     conditions = ['control', 'drug_low', 'drug_high', 'stimulation']
     
-    # Step 1: Generate synthetic data for each condition
-    logger.info("Step 1: Generating synthetic MEA data for each condition")
-    recordings = {}
-    
-    for i, condition in enumerate(conditions):
-        recordings[condition] = create_condition_data(
-            condition_name=condition,
-            n_channels=16,
-            duration=300.0,  # 5 minutes
-            seed=42 + i  # Different seed for each condition
-        )
-    
-    # Step 2: Analyze each condition
-    logger.info("Step 2: Analyzing neural activity for each condition")
-    analysis_results = {}
-    
-    for condition, recording in recordings.items():
-        analysis_results[condition] = analyze_condition_activity(recording, condition)
-    
-    # Step 3: Perform manifold learning analysis
-    logger.info("Step 3: Performing manifold learning analysis")
-    manifold_results = perform_manifold_analysis(recordings)
-    
-    # Step 4: Create comparison visualizations
-    logger.info("Step 4: Creating comparison visualizations")
-    create_comparison_plots(analysis_results, manifold_results, output_dir)
-    
-    # Step 5: Generate statistical report
-    logger.info("Step 5: Generating statistical comparison report")
-    generate_statistical_report(analysis_results, output_dir)
-    
-    # Print summary
-    print("\n" + "="*60)
-    print("CROSS-CONDITION COMPARISON ANALYSIS COMPLETE")
-    print("="*60)
-    print(f"\nResults saved to: {output_dir.absolute()}")
-    print("\nGenerated files:")
-    for file_path in sorted(output_dir.glob("*")):
-        print(f"  - {file_path.name}")
-    
-    print(f"\nAnalyzed {len(conditions)} conditions:")
-    for condition in conditions:
-        n_channels = len(analysis_results[condition]['firing_rates'])
-        avg_firing_rate = np.mean(list(analysis_results[condition]['firing_rates'].values()))
-        network_bursts = analysis_results[condition]['network_bursts']['count']
-        print(f"  - {condition}: {n_channels} channels, "
-              f"avg firing rate = {avg_firing_rate:.2f} Hz, "
-              f"network bursts = {network_bursts}")
-    
-    print(f"\nManifold methods applied: {list(manifold_results.keys())}")
-    print("\nAnalysis workflow completed successfully!")
+    try:
+        # Step 1: Generate synthetic data for each condition
+        logger.info("Step 1: Generating synthetic MEA data for each condition")
+        spike_lists = {}
+        
+        for i, condition in enumerate(conditions):
+            spike_lists[condition] = create_condition_data(
+                condition_name=condition,
+                n_channels=8,
+                duration=30.0,  # 30 seconds
+                seed=42 + i  # Different seed for each condition
+            )
+        
+        # Step 2: Analyze each condition
+        logger.info("Step 2: Analyzing neural activity for each condition")
+        condition_results = {}
+        
+        for condition, spike_list in spike_lists.items():
+            condition_results[condition] = analyze_condition_activity(spike_list, condition)
+        
+        # Step 3: Compare conditions
+        logger.info("Step 3: Comparing conditions")
+        comparison_results = compare_conditions(condition_results)
+        
+        # Step 4: Create comparison visualizations
+        logger.info("Step 4: Creating comparison visualizations")
+        create_comparison_plots(condition_results, comparison_results, output_dir)
+        
+        # Print summary
+        print("\n" + "="*60)
+        print("CROSS-CONDITION COMPARISON ANALYSIS COMPLETE")
+        print("="*60)
+        print(f"\nResults saved to: {output_dir.absolute()}")
+        
+        print(f"\nAnalyzed {len(conditions)} conditions:")
+        for condition in conditions:
+            if condition in condition_results and 'summary' in condition_results[condition]:
+                summary = condition_results[condition]['summary']
+                print(f"  - {condition}: {summary['active_channels']} channels, "
+                      f"firing rate = {summary['mean_firing_rate']:.2f} Hz, "
+                      f"total spikes = {summary['total_spikes']}")
+        
+        print("\nCross-condition comparison completed successfully!")
+        
+    except Exception as e:
+        logger.error(f"Analysis failed: {e}")
+        raise
 
 
 if __name__ == "__main__":

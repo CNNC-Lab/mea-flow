@@ -37,7 +37,7 @@ plt.style.use('seaborn-v0_8' if 'seaborn-v0_8' in plt.style.available else 'defa
 sns.set_palette("husl")
 
 
-def create_dynamic_mea_data(n_channels: int = 64, duration: float = 600.0, 
+def create_dynamic_mea_data(n_channels: int = 4, duration: float = 10.0, 
                            state_transitions: bool = True, seed: int = 42) -> SpikeList:
     """
     Create synthetic MEA data with dynamic population activity patterns.
@@ -59,7 +59,7 @@ def create_dynamic_mea_data(n_channels: int = 64, duration: float = 600.0,
         Synthetic MEA recording with population dynamics
     """
     np.random.seed(seed)
-    logger.info(f"Creating dynamic MEA data: {n_channels} channels, {duration}s duration")
+    logger.info(f"Creating dynamic MEA data: {n_channels} channels, {duration}s duration (demo)")
     
     sampling_rate = 20000.0
     spike_trains = {}
@@ -142,9 +142,10 @@ def create_dynamic_mea_data(n_channels: int = 64, duration: float = 600.0,
             
             # Generate next spike
             if np.random.random() < burst_prob:
-                # Generate burst
-                burst_duration = np.random.uniform(0.1, 0.8)
+                # Generate baseline activity
+                base_rate = np.random.uniform(2.0, 5.0)  # 2-5 Hz baseline
                 burst_rate = current_rate * np.random.uniform(5, 15)
+                burst_duration = np.random.uniform(0.1, 0.8)
                 burst_end = min(t + burst_duration, duration)
                 
                 while t < burst_end:
@@ -165,8 +166,8 @@ def create_dynamic_mea_data(n_channels: int = 64, duration: float = 600.0,
         
         # Add cross-channel synchronous events
         if np.random.random() < 0.3:  # 30% of channels participate in sync events
-            n_sync_events = int(duration / 60)  # ~1 per minute
-            sync_times = np.random.uniform(0, duration, n_sync_events)
+            n_sync_events = int(duration * 0.1)
+            sync_times = np.random.uniform(0, duration, max(1, n_sync_events))
             for sync_time in sync_times:
                 if np.random.random() < 0.7:  # 70% probability to participate
                     # Add some jitter to make it realistic
@@ -220,8 +221,9 @@ def extract_population_features(spike_list: SpikeList,
     logger.info(f"Extracting population features with {time_window}s windows")
     
     # Create time bins
-    n_bins = int(spike_list.recording_length / time_window)
-    time_points = np.linspace(0, spike_list.recording_length, n_bins + 1)
+    duration = spike_list.recording_length
+    n_bins = int(duration / time_window)
+    time_points = np.linspace(0, duration, n_bins + 1)
     bin_centers = (time_points[:-1] + time_points[1:]) / 2
     
     # Initialize feature matrix
@@ -240,9 +242,12 @@ def extract_population_features(spike_list: SpikeList,
         for channel_id in channel_ids:
             spike_train = spike_list.spike_trains[channel_id]
             
+            # Get spike times for this channel
+            spike_times = spike_train.spike_times
+            
             # Get spikes in this time window
-            mask = (spike_train.spike_times >= start_time) & (spike_train.spike_times < end_time)
-            window_spikes = spike_train.spike_times[mask]
+            mask = (spike_times >= start_time) & (spike_times < end_time)
+            window_spikes = spike_times[mask]
             
             # Feature 1: Firing rate
             firing_rate = len(window_spikes) / time_window
@@ -313,45 +318,21 @@ def perform_comprehensive_manifold_analysis(spike_list: SpikeList) -> Dict:
     analyzer = ManifoldAnalysis()
     results = {}
     
+    # Skip heavy MEA-Flow manifold analysis, do simple PCA directly
+    logger.info("Performing lightweight PCA analysis")
     try:
-        # Analyze population dynamics using MEA-Flow's built-in methods
-        manifold_results = analyzer.analyze_population_dynamics(spike_list)
+        features, time_points = extract_population_features(spike_list, time_window=2.0)
         
-        # Extract embeddings for different methods
-        if 'embeddings' in manifold_results:
-            embeddings = manifold_results['embeddings']
-            
-            # Store results for each method
-            for method_name, embedding_data in embeddings.items():
-                results[method_name.lower()] = {
-                    'embedding': embedding_data,
-                    'method': method_name
-                }
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.decomposition import PCA
         
-        # Store evaluation metrics if available
-        if 'evaluation' in manifold_results:
-            results['evaluation'] = manifold_results['evaluation']
-            
-        # Store dimensionality analysis if available  
-        if 'dimensionality' in manifold_results:
-            results['dimensionality'] = manifold_results['dimensionality']
-            
-    except Exception as e:
-        logger.error(f"Manifold analysis failed: {e}")
-        
-        # Fallback: simple feature extraction and basic PCA
-        logger.info("Falling back to basic feature extraction")
-        try:
-            features, time_points = extract_population_features(spike_list, time_window=10.0)
-            
-            from sklearn.preprocessing import StandardScaler
-            from sklearn.decomposition import PCA
-            
+        if features.shape[0] > 1 and features.shape[1] > 1:
             scaler = StandardScaler()
             features_scaled = scaler.fit_transform(features)
             
             # Basic PCA
-            pca = PCA(n_components=min(3, features_scaled.shape[1]))
+            n_components = min(2, features_scaled.shape[1], features_scaled.shape[0])
+            pca = PCA(n_components=n_components)
             pca_embedding = pca.fit_transform(features_scaled)
             
             results['pca'] = {
@@ -359,10 +340,13 @@ def perform_comprehensive_manifold_analysis(spike_list: SpikeList) -> Dict:
                 'explained_variance': pca.explained_variance_ratio_,
                 'time_points': time_points
             }
+        else:
+            logger.warning("Insufficient data for PCA analysis")
+            results = {'error': 'Insufficient data'}
             
-        except Exception as e2:
-            logger.error(f"Fallback analysis also failed: {e2}")
-            results = {'error': str(e2)}
+    except Exception as e:
+        logger.error(f"PCA analysis failed: {e}")
+        results = {'error': str(e)}
     
     return results
 
@@ -385,7 +369,7 @@ def visualize_manifold_results(spike_list: SpikeList, manifold_results: Dict):
     try:
         # Create basic raster plot
         fig_raster = plotter.plot_raster(spike_list, time_range=(0, 60))
-        plotter.save_figure(fig_raster, "output/manifold_raster_plot.png")
+        plotter.save_figure(fig_raster, "examples/output/manifold_raster_plot.png")
         
         # If we have PCA results, plot them
         if 'pca' in manifold_results and 'embedding' in manifold_results['pca']:
@@ -407,7 +391,7 @@ def visualize_manifold_results(spike_list: SpikeList, manifold_results: Dict):
                 ax.plot(embedding[:, 0], embedding[:, 1], 'k-', alpha=0.3, linewidth=1)
                 
                 plt.tight_layout()
-                plotter.save_figure(fig, "output/pca_manifold.png")
+                plotter.save_figure(fig, "examples/output/pca_manifold.png")
                 plt.close(fig)
         
         # Plot explained variance if available
@@ -420,7 +404,7 @@ def visualize_manifold_results(spike_list: SpikeList, manifold_results: Dict):
             ax.set_ylabel('Explained Variance Ratio')
             ax.set_title('PCA Explained Variance')
             plt.tight_layout()
-            plotter.save_figure(fig, "output/pca_explained_variance.png")
+            plotter.save_figure(fig, "examples/output/pca_explained_variance.png")
             plt.close(fig)
             
     except Exception as e:
@@ -434,7 +418,7 @@ def main():
     logger.info("Starting MEA-Flow Manifold Learning Workflow")
     
     # Create output directory
-    output_dir = Path("output")
+    output_dir = Path("examples/output")
     output_dir.mkdir(exist_ok=True)
     
     try:
