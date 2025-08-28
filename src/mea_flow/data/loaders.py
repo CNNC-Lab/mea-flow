@@ -104,19 +104,21 @@ def _infer_format(file_path: Path) -> str:
 
 def load_axion_spk(
     file_path: Union[str, Path],
+    use_native_loader: bool = True,
     **kwargs
 ) -> SpikeList:
     """
     Load data from Axion .spk files.
     
-    Note: This function currently requires the data to be pre-converted to 
-    .mat format using MATLAB and the AxionFileLoader. Direct .spk loading
-    is not yet implemented.
+    This function can use either a native Python loader or fall back to
+    MATLAB conversion for compatibility.
     
     Parameters
     ---------- 
     file_path : str or Path
         Path to the .spk file
+    use_native_loader : bool
+        Whether to use native Python loader (default: True)
     **kwargs
         Additional loading parameters
         
@@ -127,27 +129,35 @@ def load_axion_spk(
         
     Raises
     ------
-    NotImplementedError
-        Direct .spk loading is not yet implemented
+    ValueError
+        If file cannot be loaded with either method
     """
-    # For now, suggest using MATLAB conversion
-    mat_path = Path(file_path).with_suffix('.mat')
+    file_path = Path(file_path)
+    
+    if use_native_loader:
+        try:
+            from .axion_spk_loader import load_axion_spk_native
+            return load_axion_spk_native(file_path, **kwargs)
+        except Exception as e:
+            warnings.warn(f"Native .spk loader failed: {e}. Trying MATLAB fallback.")
+    
+    # Fallback to MATLAB conversion approach
+    mat_path = file_path.with_suffix('.mat')
     
     if mat_path.exists():
         warnings.warn(
-            f"Direct .spk loading not implemented. Loading {mat_path} instead. "
-            "To convert .spk files, use MATLAB with AxionFileLoader:\n"
-            "[Electrodes, Times] = AxisFile('file.spk').SpikeData.LoadAllSpikes;\n"
-            "Channels = Electrodes.Channel; save('file.mat');"
+            f"Using MATLAB-converted file {mat_path}. "
+            "For direct .spk loading, ensure the native loader is working correctly."
         )
         return load_matlab_file(mat_path, **kwargs)
     else:
-        raise NotImplementedError(
-            "Direct .spk file loading not yet implemented. "
-            "Please convert to .mat format using MATLAB and AxionFileLoader:\n"
+        raise ValueError(
+            f"Cannot load .spk file {file_path}. "
+            "Native loader failed and no .mat conversion found. "
+            "To create .mat conversion, use MATLAB with AxionFileLoader:\n"
             "[Electrodes, Times] = AxisFile('file.spk').SpikeData.LoadAllSpikes;\n"
             "Channels = Electrodes.Channel;\n"
-            "save('converted_file.mat');"
+            "save('converted_file.mat', 'Channels', 'Times');"
         )
 
 
