@@ -100,7 +100,7 @@ class SpikeList:
         if channel_ids is not None:
             self.channel_ids = sorted(channel_ids)
         else:
-            self.channel_ids = sorted(self.spike_trains.keys())
+            self.channel_ids = sorted(self.raw_spike_data.keys())
             
         # Determine recording length
         if recording_length is not None:
@@ -131,9 +131,28 @@ class SpikeList:
             
         self.raw_spike_data = spike_dict
         
-    def _init_from_dict(self, spike_data: Dict[int, np.ndarray]):
-        """Initialize from dictionary of {channel_id: spike_times}."""
-        self.raw_spike_data = spike_data.copy()
+    def _init_from_dict(self, spike_data: Dict):
+        """Initialize from dictionary of spike data."""
+        if 'times' in spike_data and 'channels' in spike_data:
+            # Handle format: {'times': [...], 'channels': [...]}
+            times = np.asarray(spike_data['times'])
+            channels = np.asarray(spike_data['channels'])
+            
+            # Convert to channel-indexed format
+            spike_dict = {}
+            for time, channel in zip(times, channels):
+                if channel not in spike_dict:
+                    spike_dict[channel] = []
+                spike_dict[channel].append(time)
+            
+            # Convert lists to arrays
+            for channel_id in spike_dict:
+                spike_dict[channel_id] = np.array(spike_dict[channel_id])
+                
+            self.raw_spike_data = spike_dict
+        else:
+            # Handle format: {channel_id: spike_times}
+            self.raw_spike_data = spike_data.copy()
         
     def _auto_detect_recording_length(self):
         """Auto-detect recording length from maximum spike time."""

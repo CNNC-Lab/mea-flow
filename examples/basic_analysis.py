@@ -77,25 +77,46 @@ def analyze_activity(spike_list):
     metrics = MEAMetrics()
     
     # Compute comprehensive metrics
-    results = metrics.compute_all_metrics(spike_list, grouping='global')
+    results_df = metrics.compute_all_metrics(spike_list, grouping='global')
+    
+    # Extract nested results for easier access
+    if hasattr(results_df, 'attrs') and 'nested_results' in results_df.attrs:
+        results = results_df.attrs['nested_results']
+    else:
+        # Fallback: reconstruct from flattened DataFrame
+        results = {
+            'activity': {},
+            'regularity': {},
+            'synchrony': {}
+        }
+        for col in results_df.columns:
+            if col.startswith('activity_'):
+                key = col.replace('activity_', '')
+                results['activity'][key] = results_df[col].iloc[0]
+            elif col.startswith('regularity_'):
+                key = col.replace('regularity_', '')
+                results['regularity'][key] = results_df[col].iloc[0]
+            elif col.startswith('synchrony_'):
+                key = col.replace('synchrony_', '')
+                results['synchrony'][key] = results_df[col].iloc[0]
     
     # Print key results
     activity = results['activity']
     print(f"📈 Activity Metrics:")
-    print(f"   • Total spikes: {activity['total_spikes']}")
-    print(f"   • Active channels: {activity['active_channels']}")
-    print(f"   • Mean firing rate: {activity['mean_firing_rate']:.2f} ± {activity['std_firing_rate']:.2f} Hz")
-    print(f"   • Burst rate: {activity['burst_rate']:.3f} bursts/min")
+    print(f"   • Total spikes: {activity.get('total_spike_count', 0)}")
+    print(f"   • Active channels: {activity.get('active_channels_count', 0)}")
+    print(f"   • Mean firing rate: {activity.get('mean_firing_rate', 0):.2f} ± {activity.get('std_firing_rate', 0):.2f} Hz")
+    print(f"   • Network firing rate: {activity.get('network_firing_rate', 0):.2f} Hz")
     
     regularity = results['regularity']
     print(f"🎯 Regularity Metrics:")
-    print(f"   • Mean CV-ISI: {regularity['mean_cv_isi']:.3f}")
-    print(f"   • Mean LV: {regularity['mean_lv']:.3f}")
+    print(f"   • Mean CV-ISI: {regularity.get('mean_cv_isi', 0):.3f}")
+    print(f"   • Mean LV: {regularity.get('mean_lv', 0):.3f}")
     
     synchrony = results['synchrony']
     print(f"🔗 Synchrony Metrics:")
-    print(f"   • Mean correlation: {synchrony['pearson_cc_mean']:.3f}")
-    print(f"   • Synchrony index: {synchrony['synchrony_index']:.3f}")
+    print(f"   • Mean correlation: {synchrony.get('pearson_cc_mean', 0):.3f}")
+    print(f"   • Synchrony index: {synchrony.get('synchrony_index', 0):.3f}")
     
     return results
 
@@ -113,12 +134,13 @@ def create_visualizations(spike_list, results):
     
     # 1. Raster plot
     print("   • Creating raster plot...")
-    fig = plotter.plot_spike_raster(
+    fig = plotter.plot_raster(
         spike_list,
         time_range=(0, 10),  # First 10 seconds
-        title="MEA Recording - First 10 seconds"
+        figsize=(12, 8)
     )
-    plotter.save_figure(fig, output_dir / "raster_plot.png", dpi=300)
+    fig.suptitle("MEA Recording - First 10 seconds", fontsize=14)
+    plt.savefig(output_dir / "raster_plot.png", dpi=300, bbox_inches='tight')
     plt.close(fig)
     
     # 2. Activity summary

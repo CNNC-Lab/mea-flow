@@ -109,27 +109,36 @@ class MEAMetrics:
         
         # Activity metrics
         activity_metrics = compute_activity_metrics(spike_list, self.config)
-        results.update(activity_metrics)
+        results['activity'] = activity_metrics
         
         # Regularity metrics
         regularity_metrics = compute_regularity_metrics(spike_list, self.config)
-        results.update(regularity_metrics)
+        results['regularity'] = regularity_metrics
         
         # Synchrony metrics
         synchrony_metrics = compute_synchrony_metrics(spike_list, self.config)
-        results.update(synchrony_metrics)
+        results['synchrony'] = synchrony_metrics
         
         # Burst analysis
         if self.config.burst_detection or self.config.network_burst_detection:
             burst_metrics = network_burst_analysis(spike_list, self.config)
-            results.update(burst_metrics)
+            results['burst'] = burst_metrics
+        
+        # Flatten results for DataFrame while keeping nested structure
+        flat_results = {}
+        for category, metrics in results.items():
+            for key, value in metrics.items():
+                flat_results[f"{category}_{key}"] = value
         
         # Create DataFrame
-        df = pd.DataFrame([results])
+        df = pd.DataFrame([flat_results])
         df['group_type'] = 'global'
         df['group_id'] = 'all'
         df['n_channels'] = len(spike_list.get_active_channels())
         df['recording_length'] = spike_list.recording_length
+        
+        # Store nested results as attributes for backward compatibility
+        df.attrs['nested_results'] = results
         
         return df
     
