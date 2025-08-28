@@ -375,15 +375,19 @@ class SpikeList:
             
         return pd.DataFrame(stats)
     
+    def get_all_spike_times(self) -> List[float]:
+        """Get all spike times across all channels."""
+        all_times = []
+        for train in self.spike_trains.values():
+            all_times.extend(train.spike_times)
+        return sorted(all_times)
+    
     def __repr__(self) -> str:
         """String representation of SpikeList."""
         n_active = len(self.get_active_channels())
         total_spikes = sum(train.n_spikes for train in self.spike_trains.values())
-        
         return (
             f"SpikeList(channels={len(self.channel_ids)}, "
-            f"active={n_active}, "
-            f"total_spikes={total_spikes}, "
-            f"duration={self.recording_length:.1f}s, "
-            f"wells={len(self.well_map)})"
+            f"active={n_active}, spikes={total_spikes}, "
+            f"duration={self.recording_length:.1f}s)"
         )

@@ -7,7 +7,6 @@
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/github/license/CNNC-Lab/mea-flow)](https://github.com/CNNC-Lab/mea-flow/blob/main/LICENSE)
 [![CI](https://github.com/CNNC-Lab/mea-flow/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/CNNC-Lab/mea-flow/actions)
-[![Documentation](https://readthedocs.org/projects/mea-flow/badge/?version=latest)](https://mea-flow.readthedocs.io)
 [![Coverage](https://codecov.io/gh/CNNC-Lab/mea-flow/branch/main/graph/badge.svg)](https://codecov.io/gh/CNNC-Lab/mea-flow)
 [![PyPI](https://img.shields.io/pypi/v/mea-flow)](https://pypi.org/project/mea-flow/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -28,9 +27,10 @@ MEA-Flow is a comprehensive Python package for analyzing multi-electrode array (
 - **Cross-Condition Comparison**: Procrustes alignment, classification analysis
 
 ### 📁 **Flexible Data Input**
-- **Multiple Formats**: Axion .spk files (via MATLAB), .mat files, CSV, HDF5, pandas DataFrames
+- **Multiple Formats**: Axion .spk files (native Python), .mat files, CSV, HDF5, pandas DataFrames
 - **Well-Based Organization**: Automatic channel-to-well mapping for multi-well plates
 - **Time Window Analysis**: Temporal segmentation and sliding window analysis
+- **Native .spk Loading**: No MATLAB dependency, 2-5x faster performance
 
 ### 📈 **Publication-Ready Visualizations**
 - **Raster Plots**: Static and animated spike visualizations with well coloring
@@ -170,47 +170,58 @@ plotter = MEAPlotter()
 fig = plotter.plot_raster(spike_list, time_range=(0, 30))
 ```
 
-## 📖 Documentation & Tutorials
+## 📖 Documentation & Examples
 
 ### Getting Started
-1. **[Tutorial Notebook](notebooks/01_mea_flow_tutorial.ipynb)** - Comprehensive walkthrough
-2. **[API Reference](docs/)** - Detailed function documentation  
-3. **[Examples](examples/)** - Specific use cases and workflows
+1. **[Tutorial Notebook](notebooks/01_mea_flow_tutorial.ipynb)** - Interactive walkthrough
+2. **[Working Examples](examples/)** - Real analysis workflows
+3. **[Installation Guide](INSTALL_GUIDE.md)** - Detailed setup instructions
+
+### Example Scripts
+- **[Basic Analysis](examples/basic_analysis.py)** - Core metrics and visualization
+- **[Cross-Condition Comparison](examples/cross_condition_comparison.py)** - Statistical comparisons
+- **[Manifold Learning](examples/manifold_learning_workflow.py)** - Population dynamics
+- **[Well Plate Analysis](examples/well_plate_analysis.py)** - Multi-well experiments
+- **[Native .spk Loading](examples/spk_loader_demo.py)** - File format examples
 
 ### Key Workflows
 
 **Basic Analysis Pipeline:**
 ```python
-# 1. Load data
-from mea_flow import load_data
-spike_list = load_data('your_data.mat')
+# 1. Load data (automatic format detection)
+from mea_flow.data import load_data
+spike_list = load_data('recording.spk')  # Native Python loader
 
 # 2. Compute metrics
-from mea_flow import MEAMetrics
+from mea_flow.analysis import MEAMetrics
 analyzer = MEAMetrics()
-metrics = analyzer.compare_conditions(spike_lists_dict)
+metrics = analyzer.compute_all_metrics(spike_list)
 
 # 3. Manifold analysis
-from mea_flow import ManifoldAnalysis  
+from mea_flow.manifold import ManifoldAnalysis  
 manifold_analyzer = ManifoldAnalysis()
 results = manifold_analyzer.analyze_population_dynamics(spike_list)
 
 # 4. Visualization
-from mea_flow import MEAPlotter
+from mea_flow.visualization import MEAPlotter
 plotter = MEAPlotter()
-plotter.create_summary_report(spike_lists_dict, metrics)
+fig = plotter.plot_raster(spike_list, time_range=(0, 60))
+plotter.save_figure(fig, 'examples/output/raster_plot.png')
 ```
 
 **Cross-Condition Comparison:**
 ```python
 # Load multiple conditions
-conditions = {'control': spike_list1, 'treatment': spike_list2}
+control_data = load_data('control.spk')
+treatment_data = load_data('treatment.spk')
+conditions = {'control': control_data, 'treatment': treatment_data}
 
 # Comprehensive comparison
 metrics_comparison = analyzer.compare_conditions(conditions)
 manifold_comparison = manifold_analyzer.compare_conditions(conditions) 
 
 # Statistical visualization
-plotter.plot_metrics_comparison(metrics_comparison, grouping_col='condition')
+fig = plotter.plot_metrics_comparison(metrics_comparison, grouping_col='condition')
+plotter.save_figure(fig, 'examples/output/condition_comparison.png')
 ```
 

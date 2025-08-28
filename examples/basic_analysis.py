@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
 Basic MEA Analysis Example
-=========================
 
-This example demonstrates the basic workflow for analyzing MEA data using MEA-Flow.
-It covers loading data, computing metrics, and creating visualizations.
+This script demonstrates the core functionality of MEA-Flow for analyzing
+multi-electrode array data, including loading data, computing metrics,
+and creating visualizations.
 
-Run this script with:
-    python examples/basic_analysis.py
+Run this script to see MEA-Flow in action:
+    python basic_analysis.py
+
+Outputs are saved to: examples/output/
 """
 
 import numpy as np
