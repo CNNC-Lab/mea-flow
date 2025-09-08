@@ -9,6 +9,7 @@ import numpy as np
 from typing import Dict, List, Optional, Any, Tuple
 import warnings
 from itertools import combinations
+from tqdm import tqdm
 
 try:
     import pyspike
@@ -23,7 +24,8 @@ from ..data import SpikeList
 def compute_synchrony_metrics(
     spike_list: SpikeList,
     config: Any,
-    channels: Optional[List[int]] = None
+    channels: Optional[List[int]] = None,
+    verbose: bool = False
 ) -> Dict[str, float]:
     """
     Compute comprehensive synchrony metrics for MEA data.
@@ -36,6 +38,8 @@ def compute_synchrony_metrics(
         Configuration object with analysis parameters
     channels : list of int, optional
         Channels to include in analysis (default: all active)
+    verbose : bool
+        Whether to show progress for synchrony computations
         
     Returns
     -------
@@ -50,6 +54,10 @@ def compute_synchrony_metrics(
         return _get_empty_synchrony_metrics()
     
     results = {}
+    n_pairs = len(channels) * (len(channels) - 1) // 2
+    
+    if verbose:
+        print(f"    Analyzing {len(channels)} channels ({min(n_pairs, config.n_pairs_sync)} pairs)")
     
     # Pairwise correlation analysis
     try:
@@ -57,7 +65,8 @@ def compute_synchrony_metrics(
             spike_list, 
             channels=channels,
             bin_size=config.sync_time_bin,
-            max_pairs=config.n_pairs_sync
+            max_pairs=config.n_pairs_sync,
+            verbose=verbose
         )
         
         if len(correlations) > 0:
@@ -114,12 +123,13 @@ def compute_synchrony_metrics(
         pop_sync = population_synchrony_measures(
             spike_list,
             channels=channels,
-            bin_size=config.sync_time_bin
+            bin_size=config.sync_time_bin,
+            verbose=False
         )
         results.update(pop_sync)
     except Exception as e:
         warnings.warn(f"Population synchrony analysis failed: {e}")
-        pop_keys = ['chi_square_distance', 'cosyne_similarity', 'synchrony_index']
+        pop_keys = ['chi_square_distance', 'population_spike_synchrony', 'synchrony_index']
         for key in pop_keys:
             results[key] = np.nan
     
@@ -130,7 +140,8 @@ def pairwise_correlations(
     spike_list: SpikeList,
     channels: Optional[List[int]] = None,
     bin_size: float = 0.01,
-    max_pairs: Optional[int] = None
+    max_pairs: Optional[int] = None,
+    verbose: bool = False
 ) -> List[float]:
     """
     Calculate pairwise Pearson correlation coefficients between channels.
@@ -176,7 +187,13 @@ def pairwise_correlations(
     
     correlations = []
     
-    for i, j in pairs_to_analyze:
+    # Add progress bar for correlation computation if verbose and many pairs
+    if verbose and len(pairs_to_analyze) > 100:
+        pairs_iter = tqdm(pairs_to_analyze, desc="Computing correlations", leave=False, unit="pairs")
+    else:
+        pairs_iter = pairs_to_analyze
+    
+    for i, j in pairs_iter:
         x = spike_matrix[i, :]
         y = spike_matrix[j, :]
         
@@ -189,6 +206,8 @@ def pairwise_correlations(
             corr = np.corrcoef(x, y)[0, 1]
             if not np.isnan(corr):
                 correlations.append(corr)
+    
+    # Progress bar automatically closes when loop completes
     
     return correlations
 
@@ -332,7 +351,8 @@ def van_rossum_distance(
 def population_synchrony_measures(
     spike_list: SpikeList,
     channels: Optional[List[int]] = None,
-    bin_size: float = 0.01
+    bin_size: float = 0.01,
+    verbose: bool = False
 ) -> Dict[str, float]:
     """
     Calculate population-level synchrony measures.
@@ -355,7 +375,7 @@ def population_synchrony_measures(
         channels = spike_list.get_active_channels(min_spikes=5)
     
     if len(channels) < 2:
-        return {'chi_square_distance': np.nan, 'cosyne_similarity': np.nan, 'synchrony_index': np.nan}
+        return {'chi_square_distance': np.nan, 'population_spike_synchrony': np.nan, 'synchrony_index': np.nan}
     
     # Create binned spike matrix
     spike_matrix, time_bins = spike_list.bin_spikes(bin_size, channels)
@@ -369,12 +389,12 @@ def population_synchrony_measures(
     except:
         results['chi_square_distance'] = np.nan
     
-    # CoSyNE-style population vector similarity
+    # Population spike synchrony (fraction of simultaneous spikes)
     try:
-        cosyne_sim = _cosyne_similarity(spike_matrix)
-        results['cosyne_similarity'] = cosyne_sim
+        pop_sync = _population_spike_synchrony(spike_matrix)
+        results['population_spike_synchrony'] = pop_sync
     except:
-        results['cosyne_similarity'] = np.nan
+        results['population_spike_synchrony'] = np.nan
     
     # Simple synchrony index (fraction of bins with >1 channel active)
     try:
@@ -410,30 +430,31 @@ def _chi_square_distance(spike_matrix: np.ndarray) -> float:
     return chi_sq / n_bins
 
 
-def _cosyne_similarity(spike_matrix: np.ndarray) -> float:
-    """Calculate CoSyNE-style population vector similarity."""
+def _population_spike_synchrony(spike_matrix: np.ndarray) -> float:
+    """Calculate population spike synchrony (mean pairwise spike coincidence)."""
     n_channels, n_bins = spike_matrix.shape
     
-    if n_bins < 2:
+    if n_channels < 2 or n_bins == 0:
         return np.nan
     
-    # Calculate pairwise cosine similarities between time bins
-    similarities = []
+    # Calculate pairwise spike coincidences
+    coincidences = []
     
-    for i in range(n_bins - 1):
-        for j in range(i + 1, n_bins):
-            vec1 = spike_matrix[:, i]
-            vec2 = spike_matrix[:, j]
+    for i in range(n_channels):
+        for j in range(i + 1, n_channels):
+            # Count bins where both channels spike
+            both_spike = (spike_matrix[i, :] > 0) & (spike_matrix[j, :] > 0)
+            coincidence_count = np.sum(both_spike)
             
-            # Cosine similarity
-            norm1 = np.linalg.norm(vec1)
-            norm2 = np.linalg.norm(vec2)
+            # Normalize by total bins with activity in either channel
+            either_spike = (spike_matrix[i, :] > 0) | (spike_matrix[j, :] > 0)
+            total_active_bins = np.sum(either_spike)
             
-            if norm1 > 0 and norm2 > 0:
-                similarity = np.dot(vec1, vec2) / (norm1 * norm2)
-                similarities.append(similarity)
+            if total_active_bins > 0:
+                coincidence_rate = coincidence_count / total_active_bins
+                coincidences.append(coincidence_rate)
     
-    return np.mean(similarities) if len(similarities) > 0 else np.nan
+    return np.mean(coincidences) if len(coincidences) > 0 else np.nan
 
 
 def _synchrony_index(spike_matrix: np.ndarray) -> float:
@@ -455,7 +476,7 @@ def _get_empty_synchrony_metrics() -> Dict[str, float]:
         'van_rossum_distance_mean': np.nan,
         'van_rossum_distance_std': np.nan,
         'chi_square_distance': np.nan,
-        'cosyne_similarity': np.nan, 
+        'population_spike_synchrony': np.nan, 
         'synchrony_index': np.nan
     }
 

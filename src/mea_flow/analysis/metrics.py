@@ -10,6 +10,8 @@ import pandas as pd
 from typing import Dict, List, Optional, Union, Any
 import warnings
 from dataclasses import dataclass
+from tqdm import tqdm
+import time
 
 from ..data import SpikeList
 from .activity import compute_activity_metrics
@@ -57,7 +59,7 @@ class MEAMetrics:
     grouping strategies (by condition, well, time window).
     """
     
-    def __init__(self, config: Optional[AnalysisConfig] = None):
+    def __init__(self, config: Optional[AnalysisConfig] = None, verbose: bool = True):
         """
         Initialize MEAMetrics calculator.
         
@@ -65,8 +67,11 @@ class MEAMetrics:
         ----------
         config : AnalysisConfig, optional
             Configuration for analysis parameters
+        verbose : bool
+            Whether to show progress indicators and status messages
         """
         self.config = config if config is not None else AnalysisConfig()
+        self.verbose = verbose
         
     def compute_all_metrics(
         self,
@@ -107,22 +112,65 @@ class MEAMetrics:
         """Compute metrics for entire recording."""
         results = {}
         
-        # Activity metrics
-        activity_metrics = compute_activity_metrics(spike_list, self.config)
-        results['activity'] = activity_metrics
-        
-        # Regularity metrics
-        regularity_metrics = compute_regularity_metrics(spike_list, self.config)
-        results['regularity'] = regularity_metrics
-        
-        # Synchrony metrics
-        synchrony_metrics = compute_synchrony_metrics(spike_list, self.config)
-        results['synchrony'] = synchrony_metrics
-        
-        # Burst analysis
+        # Setup progress tracking
+        metric_categories = ['Activity', 'Regularity', 'Synchrony']
         if self.config.burst_detection or self.config.network_burst_detection:
-            burst_metrics = network_burst_analysis(spike_list, self.config)
-            results['burst'] = burst_metrics
+            metric_categories.append('Burst Analysis')
+        
+        if self.verbose:
+            print(f"\nComputing MEA metrics for {len(spike_list.get_active_channels())} active channels...")
+            print(f"Recording length: {spike_list.recording_length:.1f}s")
+            pbar = tqdm(total=len(metric_categories), desc="Computing metrics", unit="step")
+        
+        try:
+            # Activity metrics
+            if self.verbose:
+                pbar.set_description("Activity metrics")
+                start_time = time.time()
+            activity_metrics = compute_activity_metrics(spike_list, self.config)
+            results['activity'] = activity_metrics
+            if self.verbose:
+                elapsed = time.time() - start_time
+                pbar.set_postfix({"last": f"Activity ({elapsed:.1f}s)"})
+                pbar.update(1)
+            
+            # Regularity metrics
+            if self.verbose:
+                pbar.set_description("Regularity metrics")
+                start_time = time.time()
+            regularity_metrics = compute_regularity_metrics(spike_list, self.config, verbose=False)
+            results['regularity'] = regularity_metrics
+            if self.verbose:
+                elapsed = time.time() - start_time
+                pbar.set_postfix({"last": f"Regularity ({elapsed:.1f}s)"})
+                pbar.update(1)
+            
+            # Synchrony metrics
+            if self.verbose:
+                pbar.set_description("Synchrony metrics (slow)")
+                start_time = time.time()
+            synchrony_metrics = compute_synchrony_metrics(spike_list, self.config, verbose=False)
+            results['synchrony'] = synchrony_metrics
+            if self.verbose:
+                elapsed = time.time() - start_time
+                pbar.set_postfix({"last": f"Synchrony ({elapsed:.1f}s)"})
+                pbar.update(1)
+            
+            # Burst analysis
+            if self.config.burst_detection or self.config.network_burst_detection:
+                if self.verbose:
+                    pbar.set_description("Burst analysis")
+                    start_time = time.time()
+                burst_metrics = network_burst_analysis(spike_list, self.config)
+                results['burst'] = burst_metrics
+                if self.verbose:
+                    elapsed = time.time() - start_time
+                    pbar.set_postfix({"last": f"Burst ({elapsed:.1f}s)"})
+                    pbar.update(1)
+        
+        finally:
+            if self.verbose:
+                pbar.close()
         
         # Flatten results for DataFrame while keeping nested structure
         flat_results = {}
@@ -337,7 +385,16 @@ class MEAMetrics:
         """
         all_results = []
         
-        for condition_name, spike_list in spike_lists.items():
+        if self.verbose:
+            print(f"\nAnalyzing {len(spike_lists)} experimental conditions...")
+            condition_pbar = tqdm(spike_lists.items(), desc="Processing conditions", unit="condition")
+        else:
+            condition_pbar = spike_lists.items()
+        
+        for condition_name, spike_list in condition_pbar:
+            if self.verbose:
+                condition_pbar.set_description(f"Processing: {condition_name}")
+            
             condition_results = self.compute_all_metrics(
                 spike_list, 
                 grouping=grouping,
@@ -345,6 +402,9 @@ class MEAMetrics:
             )
             condition_results['condition'] = condition_name
             all_results.append(condition_results)
+        
+        if self.verbose:
+            print(f"\nAll {len(spike_lists)} conditions processed successfully!")
         
         combined_df = pd.concat(all_results, ignore_index=True)
         

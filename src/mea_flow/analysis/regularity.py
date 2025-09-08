@@ -16,7 +16,8 @@ from ..data import SpikeList
 def compute_regularity_metrics(
     spike_list: SpikeList,
     config: Any,
-    channels: Optional[List[int]] = None
+    channels: Optional[List[int]] = None,
+    verbose: bool = False
 ) -> Dict[str, float]:
     """
     Compute comprehensive regularity metrics for MEA data.
@@ -41,6 +42,9 @@ def compute_regularity_metrics(
     if len(channels) == 0:
         warnings.warn("No channels with sufficient spikes for regularity analysis")
         return _get_empty_regularity_metrics()
+    
+    if verbose and len(channels) > 20:
+        print(f"    Processing {len(channels)} channels for regularity metrics...")
     
     results = {}
     
