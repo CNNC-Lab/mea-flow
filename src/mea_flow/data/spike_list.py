@@ -23,6 +23,7 @@ class SpikeTrain:
     def __post_init__(self):
         """Validate and sort spike times."""
         self.spike_times = np.asarray(self.spike_times)
+        # Sort but preserve duplicates (MATLAB doesn't remove duplicate timestamps)
         self.spike_times = np.sort(self.spike_times)
         
         if len(self.spike_times) > 0:
