@@ -76,7 +76,8 @@ def plot_metrics_comparison(
     n_cols = min(3, n_metrics)
     n_rows = int(np.ceil(n_metrics / n_cols))
     
-    # Create subplots
+    # Create subplots with explicit backend control
+    plt.ioff()  # Turn off interactive mode to prevent automatic display
     fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
     if n_metrics == 1:
         axes = [axes]
@@ -143,7 +144,9 @@ def plot_metrics_comparison(
     
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Plot saved to: {save_path}")
     
+    plt.ion()  # Turn interactive mode back on
     return fig
 
 

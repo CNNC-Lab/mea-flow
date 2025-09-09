@@ -32,14 +32,22 @@ class ManifoldConfig:
     # Manifold learning methods to use
     methods: List[str] = None
     
+    # Subsampling for embeddings (applied before all methods)
+    max_embedding_samples: int = 50000  # Max timepoints for embedding methods
+    embedding_sampling_method: str = 'regular'  # 'regular' or 'random'
+    
     # Evaluation parameters
     n_neighbors_lle: int = 10
     perplexity_tsne: float = 30.0
     n_neighbors_umap: int = 15
     
+    # Population statistics parameters
+    max_distance_samples: int = 10000  # Max timepoints for distance calculations
+    use_regular_sampling: bool = True   # Use regular intervals vs random sampling
+    
     def __post_init__(self):
         if self.methods is None:
-            self.methods = ['PCA', 'MDS', 'Isomap', 'LLE', 'UMAP', 't-SNE']
+            self.methods = ['PCA']  # Default to PCA only to avoid memory issues
 
 
 class ManifoldAnalysis:
@@ -115,36 +123,53 @@ class ManifoldAnalysis:
         # Step 2: Calculate basic population statistics
         pop_stats = self._calculate_population_statistics(signal_matrix)
         
-        # Step 3: Apply dimensionality reduction methods
+        # Step 3: Subsample signal matrix for embedding methods if needed
+        embedding_matrix = signal_matrix
+        embedding_time_vector = time_vector
+        
+        if signal_matrix.shape[1] > self.config.max_embedding_samples:
+            print(f"Subsampling signal matrix for embeddings: {signal_matrix.shape[1]} -> {self.config.max_embedding_samples} timepoints")
+            
+            if self.config.embedding_sampling_method == 'regular':
+                step = signal_matrix.shape[1] // self.config.max_embedding_samples
+                sample_indices = np.arange(0, signal_matrix.shape[1], step)[:self.config.max_embedding_samples]
+                print(f"   Regular sampling: every {step} timepoints")
+            else:
+                sample_indices = np.random.choice(signal_matrix.shape[1], self.config.max_embedding_samples, replace=False)
+                sample_indices = np.sort(sample_indices)
+                print(f"   Random sampling: {self.config.max_embedding_samples} timepoints")
+            
+            embedding_matrix = signal_matrix[:, sample_indices]
+            embedding_time_vector = time_vector[sample_indices]
+            print(f"   Embedding matrix shape: {embedding_matrix.shape}")
+        
+        # Step 4: Apply dimensionality reduction methods
         print("Applying dimensionality reduction methods...")
         embeddings = {}
+        evaluation = {}
         
         for method in self.config.methods:
             try:
+                print(f"   Applying {method}...")
                 embedding_result = embed_population_dynamics(
-                    signal_matrix,
+                    embedding_matrix,
                     method=method,
-                    n_components=min(self.config.max_components, len(active_channels)),
+                    n_components=min(self.config.max_components, embedding_matrix.shape[0]),
                     config=self.config
                 )
+                
                 embeddings[method] = embedding_result
-                print(f"✓ {method} completed")
-            except Exception as e:
-                warnings.warn(f"Failed to apply {method}: {e}")
-                print(f"✗ {method} failed: {e}")
-        
-        # Step 4: Evaluate embedding quality
-        print("Evaluating embedding quality...")
-        evaluation_results = {}
-        
-        for method, embedding_data in embeddings.items():
-            try:
+                
+                # Evaluate embedding quality
                 eval_result = evaluate_embedding(
-                    original_data=signal_matrix,
-                    embedded_data=embedding_data['embedding'],
-                    method_name=method
+                    embedding_matrix.T,
+                    embedding_result['embedding'],
+                    method=method
                 )
-                evaluation_results[method] = eval_result
+                evaluation[method] = eval_result
+                
+                print(f"   ✓ {method} completed")
+                
             except Exception as e:
                 warnings.warn(f"Failed to evaluate {method}: {e}")
         
@@ -163,7 +188,7 @@ class ManifoldAnalysis:
             'active_channels': active_channels,
             'population_statistics': pop_stats,
             'embeddings': embeddings,
-            'evaluation': evaluation_results,
+            'evaluation': evaluation,
             'effective_dimensionality': eff_dim,
             'config': self.config
         }
@@ -254,17 +279,40 @@ class ManifoldAnalysis:
         stats['mean_pop_vector_norm'] = np.mean(pop_vector_norms)
         stats['std_pop_vector_norm'] = np.std(pop_vector_norms)
         
-        # Distance measures
-        euclidean_dist = euclidean_distances(signal_matrix.T)
-        triu_indices = np.triu_indices(n_timepoints, k=1)
-        euclidean_dists = euclidean_dist[triu_indices]
+        # Distance measures - subsample for memory efficiency
+        max_samples = self.config.max_distance_samples
+        if n_timepoints > max_samples:
+            if self.config.use_regular_sampling:
+                # Regular interval sampling to preserve temporal structure
+                step = n_timepoints // max_samples
+                sample_indices = np.arange(0, n_timepoints, step)[:max_samples]
+                print(f"   Regular sampling: {len(sample_indices)} timepoints (every {step} samples)")
+            else:
+                # Random sampling
+                sample_indices = np.random.choice(n_timepoints, max_samples, replace=False)
+                sample_indices = np.sort(sample_indices)  # Sort for temporal order
+                print(f"   Random sampling: {max_samples} timepoints")
+            
+            sample_matrix = signal_matrix[:, sample_indices]
+            euclidean_dist = euclidean_distances(sample_matrix.T)
+            triu_indices = np.triu_indices(len(sample_indices), k=1)
+            euclidean_dists = euclidean_dist[triu_indices]
+        else:
+            euclidean_dist = euclidean_distances(signal_matrix.T)
+            triu_indices = np.triu_indices(n_timepoints, k=1)
+            euclidean_dists = euclidean_dist[triu_indices]
         
         stats['mean_euclidean_distance'] = np.mean(euclidean_dists)
         stats['std_euclidean_distance'] = np.std(euclidean_dists)
         
-        # Cosine similarity
-        cosine_dist = cosine_distances(signal_matrix.T)
-        cosine_dists = cosine_dist[triu_indices]
+        # Cosine similarity - use same sampling strategy
+        if n_timepoints > max_samples and 'sample_matrix' in locals():
+            cosine_dist = cosine_distances(sample_matrix.T)
+            cosine_dists = cosine_dist[triu_indices]
+        else:
+            cosine_dist = cosine_distances(signal_matrix.T)
+            cosine_dists = cosine_dist[triu_indices]
+        
         stats['mean_cosine_distance'] = np.mean(cosine_dists)
         stats['std_cosine_distance'] = np.std(cosine_dists)
         

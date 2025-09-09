@@ -8,10 +8,12 @@ visualizations of spike train data.
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
-from typing import List, Optional, Tuple, Dict
+import seaborn as sns
+from typing import Optional, List, Tuple, Dict
 import warnings
+from tqdm.auto import tqdm
 
-from ..data import SpikeList
+from ..data.spike_list import SpikeList
 
 
 def plot_raster(
@@ -71,7 +73,8 @@ def plot_raster(
         plot_spike_list = spike_list
         time_offset = 0.0
     
-    # Create figure
+    # Create figure with explicit backend control
+    plt.ioff()  # Turn off interactive mode to prevent automatic display
     fig, ax = plt.subplots(figsize=figsize)
     
     # Prepare colors
@@ -139,6 +142,7 @@ def plot_raster(
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
     
+    plt.ion()  # Turn interactive mode back on
     return fig
 
 
@@ -183,6 +187,8 @@ def plot_animated_raster(
     max_start_time = spike_list.recording_length - window_length
     window_starts = np.arange(0, max_start_time + step_size, step_size)
     
+    print(f"Creating animation with {len(window_starts)} frames...")
+    
     # Create figure
     fig, ax = plt.subplots(figsize=figsize)
     
@@ -194,6 +200,10 @@ def plot_animated_raster(
         for ch in well_channels:
             if ch in channels:
                 channel_colors[ch] = color
+    
+    # Progress bar for animation frames
+    pbar = tqdm(total=len(window_starts), desc="Generating animation frames", 
+                unit="frame", leave=True)
     
     def animate(frame):
         ax.clear()
@@ -226,6 +236,9 @@ def plot_animated_raster(
         ax.set_ylim(-0.5, len(channels) - 0.5)
         ax.set_title(f'Animated Raster Plot - Window: {start_time:.1f}s - {end_time:.1f}s')
         
+        # Update progress bar
+        pbar.update(1)
+        
         return ax.collections
     
     # Create animation
@@ -236,9 +249,14 @@ def plot_animated_raster(
     
     if save_path:
         try:
+            print(f"Saving animation to {save_path}...")
             anim.save(save_path, writer='ffmpeg', fps=2)
+            print("Animation saved successfully!")
         except Exception as e:
             warnings.warn(f"Could not save animation: {e}")
+    
+    # Close progress bar
+    pbar.close()
     
     return anim
 

@@ -10,6 +10,14 @@ from .activity import compute_activity_metrics, firing_rate, burst_detection
 from .regularity import compute_regularity_metrics, cv_isi, entropy_isi  
 from .synchrony import compute_synchrony_metrics, pairwise_correlations, spike_distance_measures
 from .burst_analysis import network_burst_analysis, burst_statistics
+from .discriminant import (
+    identify_discriminative_features, 
+    compare_discriminant_methods,
+    get_available_methods,
+    DiscriminantConfig, 
+    DiscriminantResults, 
+    DiscriminantMethod
+)
 
 __all__ = [
     "MEAMetrics",
@@ -24,5 +32,11 @@ __all__ = [
     "pairwise_correlations",
     "spike_distance_measures",
     "network_burst_analysis",
-    "burst_statistics"
+    "burst_statistics",
+    "identify_discriminative_features",
+    "compare_discriminant_methods",
+    "get_available_methods",
+    "DiscriminantConfig",
+    "DiscriminantResults",
+    "DiscriminantMethod"
 ]

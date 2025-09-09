@@ -176,7 +176,7 @@ class MEAMetrics:
         flat_results = {}
         for category, metrics in results.items():
             for key, value in metrics.items():
-                flat_results[f"{category}_{key}"] = value
+                flat_results[key] = value
         
         # Create DataFrame
         df = pd.DataFrame([flat_results])

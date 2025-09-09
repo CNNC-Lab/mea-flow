@@ -37,6 +37,34 @@ class MEAPlotter:
         """
         self.default_figsize = figsize
         
+        # Set high-quality matplotlib parameters
+        plt.rcParams.update({
+            'figure.dpi': 150,           # High DPI for crisp display
+            'savefig.dpi': 300,          # High DPI for saved figures
+            'figure.facecolor': 'white', # Clean white background
+            'axes.facecolor': 'white',   # Clean axes background
+            'axes.edgecolor': '#333333', # Subtle dark edges
+            'axes.linewidth': 1.2,       # Slightly thicker axes
+            'axes.spines.top': False,    # Remove top spine
+            'axes.spines.right': False,  # Remove right spine
+            'axes.grid': True,           # Enable grid
+            'grid.alpha': 0.3,           # Subtle grid
+            'grid.linewidth': 0.8,       # Thin grid lines
+            'font.size': 11,             # Readable font size
+            'axes.titlesize': 14,        # Larger titles
+            'axes.labelsize': 12,        # Clear axis labels
+            'xtick.labelsize': 10,       # Readable tick labels
+            'ytick.labelsize': 10,       # Readable tick labels
+            'legend.fontsize': 10,       # Clear legend
+            'legend.frameon': True,      # Legend frame
+            'legend.fancybox': True,     # Rounded legend corners
+            'legend.shadow': True,       # Subtle shadow
+            'lines.linewidth': 2.0,      # Thicker lines
+            'lines.markersize': 6,       # Visible markers
+            'patch.linewidth': 0.8,      # Clean patches
+            'text.usetex': False,        # Avoid LaTeX issues
+        })
+        
         # Set plotting style
         try:
             plt.style.use(style)
@@ -47,17 +75,29 @@ class MEAPlotter:
                 warnings.warn(f"Could not set style '{style}', using default")
         
         # Set seaborn parameters for publication-ready plots
-        sns.set_context("paper", font_scale=1.2)
-        sns.set_palette("husl")
+        sns.set_context("paper", font_scale=1.3, rc={
+            "lines.linewidth": 2.5,
+            "patch.linewidth": 0.8,
+            "axes.linewidth": 1.2
+        })
         
-        # Color schemes
+        # Professional color palette
         self.colors = {
-            'primary': '#2E86AB',
-            'secondary': '#A23B72', 
-            'accent': '#F18F01',
-            'neutral': '#C73E1D',
-            'background': '#F5F5F5'
+            'primary': '#1f77b4',     # Professional blue
+            'secondary': '#ff7f0e',   # Warm orange
+            'accent': '#2ca02c',      # Fresh green
+            'neutral': '#d62728',     # Clear red
+            'background': '#f8f9fa',  # Very light gray
+            'text': '#2c3e50',        # Dark blue-gray
+            'grid': '#ecf0f1'         # Light grid
         }
+        
+        # Set custom color palette
+        custom_palette = [
+            '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+            '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+        ]
+        sns.set_palette(custom_palette)
         
     def plot_raster(
         self,
@@ -105,8 +145,8 @@ class MEAPlotter:
     def plot_metrics_comparison(
         self,
         metrics_df: pd.DataFrame,
-        grouping_col: str = 'condition',
-        metrics_to_plot: Optional[List[str]] = None,
+        group_by: str = 'condition',
+        metrics: Optional[List[str]] = None,
         plot_type: str = 'box',
         figsize: Optional[Tuple[int, int]] = None,
         save_path: Optional[str] = None
@@ -118,9 +158,9 @@ class MEAPlotter:
         ----------
         metrics_df : pd.DataFrame
             DataFrame with metrics data
-        grouping_col : str
+        group_by : str
             Column to group by (e.g., 'condition', 'well_id')
-        metrics_to_plot : list of str, optional
+        metrics : list of str, optional
             Specific metrics to plot (default: all numeric)
         plot_type : str
             Type of plot ('box', 'violin', 'bar')
@@ -138,8 +178,8 @@ class MEAPlotter:
         
         return plot_metrics_comparison(
             metrics_df=metrics_df,
-            grouping_col=grouping_col,
-            metrics_to_plot=metrics_to_plot,
+            grouping_col=group_by,
+            metrics_to_plot=metrics,
             plot_type=plot_type,
             figsize=figsize or (15, 10),
             save_path=save_path
@@ -148,21 +188,30 @@ class MEAPlotter:
     def plot_well_activity(
         self,
         spike_list: SpikeList,
+        metric: str = 'spike_count',
         time_window: float = 1.0,
+        time_range: Optional[Tuple[float, float]] = None,
+        separate_wells: bool = False,
         figsize: Optional[Tuple[int, int]] = None,
         save_path: Optional[str] = None
     ) -> plt.Figure:
         """
-        Create activity heatmap showing well-based activity over time.
+        Create activity plot showing well-based activity over time.
         
         Parameters
         ----------
         spike_list : SpikeList
             Spike data to analyze
+        metric : str
+            Metric to plot ('spike_count', 'firing_rate', 'mean_rate', 'normalized_count')
         time_window : float
             Time window for binning (seconds)
+        time_range : tuple of float, optional
+            Time range (start, end) to plot (default: full recording)
+        separate_wells : bool
+            If True, create separate subplots for each well. If False, plot all wells on same axis
         figsize : tuple, optional
-            Figure size override
+            Figure size override (default: auto-sized based on layout)
         save_path : str, optional
             Path to save figure
             
@@ -175,16 +224,20 @@ class MEAPlotter:
         
         return plot_well_activity(
             spike_list=spike_list,
+            metric=metric,
             time_window=time_window,
-            figsize=figsize or (12, 8),
+            time_range=time_range,
+            separate_wells=separate_wells,
+            figsize=figsize,
             save_path=save_path
         )
     
     def plot_electrode_map(
-        self,
-        spike_list: SpikeList,
+        self, 
+        spike_list: SpikeList, 
         metric: str = 'firing_rate',
         well_id: Optional[int] = None,
+        all_wells: bool = False,
         figsize: Optional[Tuple[int, int]] = None,
         save_path: Optional[str] = None
     ) -> plt.Figure:
@@ -198,7 +251,9 @@ class MEAPlotter:
         metric : str
             Metric to display ('firing_rate', 'spike_count', etc.)
         well_id : int, optional
-            Specific well to plot (default: first well)
+            Specific well to plot (ignored if all_wells=True)
+        all_wells : bool
+            If True, plot all wells horizontally side by side
         figsize : tuple, optional
             Figure size override
         save_path : str, optional
@@ -215,7 +270,8 @@ class MEAPlotter:
             spike_list=spike_list,
             metric=metric,
             well_id=well_id,
-            figsize=figsize or (8, 8),
+            all_wells=all_wells,
+            figsize=figsize,
             save_path=save_path
         )
     
@@ -359,20 +415,23 @@ Analysis completed successfully with MEA-Flow v0.1.0
         embedding_data: np.ndarray,
         labels: Optional[np.ndarray] = None,
         method_name: str = 'Embedding',
+        time_vector: Optional[np.ndarray] = None,
         figsize: Optional[Tuple[int, int]] = None,
         save_path: Optional[str] = None
     ) -> plt.Figure:
         """
-        Create visualization of manifold embedding.
+        Create visualization of pre-computed manifold embedding.
         
         Parameters
         ----------
         embedding_data : np.ndarray
-            Low-dimensional embedding data (N_samples x N_dims)
+            Pre-computed embedding data (N_timepoints x N_dimensions)
         labels : np.ndarray, optional
-            Labels for coloring points
+            Labels for coloring points (e.g., condition, time)
         method_name : str
             Name of embedding method for title
+        time_vector : np.ndarray, optional
+            Time vector for temporal coloring
         figsize : tuple, optional
             Figure size override
         save_path : str, optional
@@ -382,6 +441,20 @@ Analysis completed successfully with MEA-Flow v0.1.0
         -------
         matplotlib.Figure
             The created figure
+            
+        Examples
+        --------
+        # First compute embedding with custom parameters
+        from mea_flow.manifold import ManifoldAnalysis
+        manifold = ManifoldAnalysis(config=custom_config)
+        results = manifold.analyze_population_dynamics(spike_list)
+        
+        # Then plot with full control
+        fig = plotter.plot_embedding(
+            results['embeddings']['PCA']['embedding'],
+            labels=condition_labels,
+            method_name='PCA Population Dynamics'
+        )
         """
         from .manifold import plot_embedding
         
@@ -389,6 +462,7 @@ Analysis completed successfully with MEA-Flow v0.1.0
             embedding_data=embedding_data,
             labels=labels,
             method_name=method_name,
+            time_vector=time_vector,
             figsize=figsize or (10, 8),
             save_path=save_path
         )
