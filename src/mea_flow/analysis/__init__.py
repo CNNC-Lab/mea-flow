@@ -18,6 +18,14 @@ from .discriminant import (
     DiscriminantResults, 
     DiscriminantMethod
 )
+from .feature_space import (
+    load_feature_data,
+    apply_feature_embedding,
+    apply_multiple_embeddings,
+    plot_feature_embeddings,
+    analyze_feature_space,
+    get_feature_importance
+)
 
 __all__ = [
     "MEAMetrics",
@@ -38,5 +46,11 @@ __all__ = [
     "get_available_methods",
     "DiscriminantConfig",
     "DiscriminantResults",
-    "DiscriminantMethod"
+    "DiscriminantMethod",
+    "load_feature_data",
+    "apply_feature_embedding",
+    "apply_multiple_embeddings",
+    "plot_feature_embeddings",
+    "analyze_feature_space",
+    "get_feature_importance"
 ]
