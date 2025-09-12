@@ -26,6 +26,17 @@ from .feature_space import (
     analyze_feature_space,
     get_feature_importance
 )
+from .clustering import (
+    apply_dbscan_clustering,
+    apply_gmm_clustering,
+    apply_kmeans_clustering,
+    apply_hierarchical_clustering,
+    apply_multiple_clustering,
+    plot_clustering_results,
+    plot_dendrogram,
+    compare_clustering_methods,
+    analyze_clustering
+)
 
 __all__ = [
     "MEAMetrics",
@@ -52,5 +63,14 @@ __all__ = [
     "apply_multiple_embeddings",
     "plot_feature_embeddings",
     "analyze_feature_space",
-    "get_feature_importance"
+    "get_feature_importance",
+    "apply_dbscan_clustering",
+    "apply_gmm_clustering",
+    "apply_kmeans_clustering",
+    "apply_hierarchical_clustering",
+    "apply_multiple_clustering",
+    "plot_clustering_results",
+    "plot_dendrogram",
+    "compare_clustering_methods",
+    "analyze_clustering"
 ]
