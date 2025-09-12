@@ -11,12 +11,13 @@ from .regularity import compute_regularity_metrics, cv_isi, entropy_isi
 from .synchrony import compute_synchrony_metrics, pairwise_correlations, spike_distance_measures
 from .burst_analysis import network_burst_analysis, burst_statistics
 from .discriminant import (
-    identify_discriminative_features, 
-    compare_discriminant_methods,
-    get_available_methods,
-    DiscriminantConfig, 
-    DiscriminantResults, 
-    DiscriminantMethod
+    comprehensive_feature_analysis,
+    FeatureAnalysisConfig,
+    FeatureAnalysisResults,
+    AnalysisPhase,
+    FeatureImportanceResult,
+    RedundancyAnalysisResult,
+    ConsensusResult
 )
 from .feature_space import (
     load_feature_data,
@@ -52,12 +53,13 @@ __all__ = [
     "spike_distance_measures",
     "network_burst_analysis",
     "burst_statistics",
-    "identify_discriminative_features",
-    "compare_discriminant_methods",
-    "get_available_methods",
-    "DiscriminantConfig",
-    "DiscriminantResults",
-    "DiscriminantMethod",
+    "comprehensive_feature_analysis",
+    "FeatureAnalysisConfig",
+    "FeatureAnalysisResults",
+    "AnalysisPhase",
+    "FeatureImportanceResult",
+    "RedundancyAnalysisResult",
+    "ConsensusResult",
     "load_feature_data",
     "apply_feature_embedding",
     "apply_multiple_embeddings",

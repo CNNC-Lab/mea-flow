@@ -26,23 +26,37 @@ classifiers = [
 ]
 
 dependencies = [
+    # Core scientific computing
     "numpy>=1.24.0",
     "scipy>=1.10.0",
     "pandas>=2.0.0",
+    # Machine learning and statistics
+    "scikit-learn>=1.3.0",
+    "statsmodels>=0.14.0",
+    # Advanced ML algorithms
+    "xgboost>=3.0.5",
+    "lightgbm>=4.6.0",
+    # Feature selection and imbalanced learning
+    "imbalanced-learn>=0.14.0",
+    "mlxtend>=0.23.4",
+    "skrebate>=0.62",
+    "boruta>=0.4.3",
+    # Visualization
     "matplotlib>=3.7.0",
     "seaborn>=0.12.0",
-    "scikit-learn>=1.3.0",
+    # Data I/O and processing
     "h5py>=3.8.0",
     "tqdm>=4.65.0",
     "joblib>=1.3.0",
+    # Performance optimization
     "numba>=0.57.0",
+    # Manifold learning
     "umap-learn>=0.5.9",
 ]
 
 [project.optional-dependencies]
 # Optional dependencies for enhanced functionality
 full = [
-    "umap-learn>=0.5.3",
     "pyspike>=0.7.0",
 ]
 dev = [
