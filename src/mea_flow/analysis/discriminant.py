@@ -986,10 +986,364 @@ def random_forest_analysis(
         scores=results_df,
         metadata={
             'n_estimators': n_estimators,
-            'use_permutation': use_permutation,
-            'importance_std': importance_std.tolist(),
-            'execution_time': time.time() - start_time
+            'random_state': random_state,
+            'oob_score': rf.oob_score_ if hasattr(rf, 'oob_score_') else None
         },
+        execution_time=time.time() - start_time
+    )
+
+
+def ridge_analysis(
+    X: pd.DataFrame,
+    y: pd.Series,
+    alpha: float = 1.0,
+    random_state: int = 42
+) -> FeatureImportanceResult:
+    """
+    Perform Ridge regression feature importance analysis.
+    """
+    import time
+    start_time = time.time()
+    
+    from sklearn.linear_model import Ridge
+    from sklearn.preprocessing import LabelEncoder
+    
+    # Handle categorical targets
+    if y.dtype == 'object':
+        le = LabelEncoder()
+        y_encoded = le.fit_transform(y)
+    else:
+        y_encoded = y
+    
+    # Fit Ridge regression
+    ridge = Ridge(alpha=alpha, random_state=random_state)
+    ridge.fit(X, y_encoded)
+    
+    # Get feature importance (absolute coefficients)
+    importance_scores = np.abs(ridge.coef_)
+    
+    # Create results DataFrame
+    scores_df = pd.DataFrame({
+        'feature': X.columns,
+        'importance': importance_scores,
+        'rank': np.argsort(-importance_scores) + 1,
+        'p_value': np.nan,
+        'selected': importance_scores > np.percentile(importance_scores, 75)
+    })
+    
+    return FeatureImportanceResult(
+        method=FeatureSelectionMethod.RIDGE,
+        scores=scores_df,
+        metadata={'alpha': alpha, 'random_state': random_state},
+        execution_time=time.time() - start_time
+    )
+
+
+def elastic_net_analysis(
+    X: pd.DataFrame,
+    y: pd.Series,
+    alpha: float = 1.0,
+    l1_ratio: float = 0.5,
+    random_state: int = 42
+) -> FeatureImportanceResult:
+    """
+    Perform Elastic Net feature importance analysis.
+    """
+    import time
+    start_time = time.time()
+    
+    from sklearn.linear_model import ElasticNet
+    from sklearn.preprocessing import LabelEncoder
+    
+    # Handle categorical targets
+    if y.dtype == 'object':
+        le = LabelEncoder()
+        y_encoded = le.fit_transform(y)
+    else:
+        y_encoded = y
+    
+    # Fit Elastic Net
+    elastic_net = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=random_state)
+    elastic_net.fit(X, y_encoded)
+    
+    # Get feature importance (absolute coefficients)
+    importance_scores = np.abs(elastic_net.coef_)
+    
+    # Create results DataFrame
+    scores_df = pd.DataFrame({
+        'feature': X.columns,
+        'importance': importance_scores,
+        'rank': np.argsort(-importance_scores) + 1,
+        'p_value': np.nan,
+        'selected': importance_scores > 0
+    })
+    
+    return FeatureImportanceResult(
+        method=FeatureSelectionMethod.ELASTIC_NET,
+        scores=scores_df,
+        metadata={'alpha': alpha, 'l1_ratio': l1_ratio},
+        execution_time=time.time() - start_time
+    )
+
+
+def xgboost_analysis(
+    X: pd.DataFrame,
+    y: pd.Series,
+    n_estimators: int = 100,
+    random_state: int = 42
+) -> FeatureImportanceResult:
+    """
+    Perform XGBoost feature importance analysis.
+    """
+    import time
+    start_time = time.time()
+    
+    try:
+        import xgboost as xgb
+    except ImportError:
+        warnings.warn("XGBoost not available, falling back to Random Forest")
+        return random_forest_analysis(X, y, n_estimators, random_state)
+    
+    from sklearn.preprocessing import LabelEncoder
+    
+    # Handle categorical targets
+    if y.dtype == 'object':
+        le = LabelEncoder()
+        y_encoded = le.fit_transform(y)
+        xgb_model = xgb.XGBClassifier(n_estimators=n_estimators, random_state=random_state)
+    else:
+        y_encoded = y
+        xgb_model = xgb.XGBRegressor(n_estimators=n_estimators, random_state=random_state)
+    
+    xgb_model.fit(X, y_encoded)
+    
+    # Get feature importance
+    importance_scores = xgb_model.feature_importances_
+    
+    # Create results DataFrame
+    scores_df = pd.DataFrame({
+        'feature': X.columns,
+        'importance': importance_scores,
+        'rank': np.argsort(-importance_scores) + 1,
+        'p_value': np.nan,
+        'selected': importance_scores > np.percentile(importance_scores, 75)
+    })
+    
+    return FeatureImportanceResult(
+        method=FeatureSelectionMethod.XGBOOST,
+        scores=scores_df,
+        metadata={'n_estimators': n_estimators},
+        execution_time=time.time() - start_time
+    )
+
+
+def svm_l1_analysis(
+    X: pd.DataFrame,
+    y: pd.Series,
+    C: float = 1.0,
+    random_state: int = 42
+) -> FeatureImportanceResult:
+    """
+    Perform SVM with L1 penalty feature importance analysis.
+    """
+    import time
+    start_time = time.time()
+    
+    from sklearn.svm import LinearSVC
+    from sklearn.preprocessing import LabelEncoder
+    
+    # Handle categorical targets
+    if y.dtype == 'object':
+        le = LabelEncoder()
+        y_encoded = le.fit_transform(y)
+    else:
+        y_encoded = y
+    
+    # Fit Linear SVM with L1 penalty
+    svm = LinearSVC(C=C, penalty='l1', dual=False, random_state=random_state, max_iter=10000)
+    svm.fit(X, y_encoded)
+    
+    # Get feature importance (absolute coefficients)
+    if len(svm.coef_.shape) > 1 and svm.coef_.shape[0] > 1:
+        importance_scores = np.mean(np.abs(svm.coef_), axis=0)
+    else:
+        importance_scores = np.abs(svm.coef_[0])
+    
+    # Create results DataFrame
+    scores_df = pd.DataFrame({
+        'feature': X.columns,
+        'importance': importance_scores,
+        'rank': np.argsort(-importance_scores) + 1,
+        'p_value': np.nan,
+        'selected': importance_scores > 0
+    })
+    
+    return FeatureImportanceResult(
+        method=FeatureSelectionMethod.SVM_L1,
+        scores=scores_df,
+        metadata={'C': C},
+        execution_time=time.time() - start_time
+    )
+
+
+def mrmr_analysis(
+    X: pd.DataFrame,
+    y: pd.Series,
+    k: int = 10
+) -> FeatureImportanceResult:
+    """
+    Perform simplified mRMR feature selection.
+    """
+    import time
+    start_time = time.time()
+    
+    from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
+    from sklearn.preprocessing import LabelEncoder
+    
+    # Handle categorical targets
+    if y.dtype == 'object':
+        le = LabelEncoder()
+        y_encoded = le.fit_transform(y)
+        mi_func = mutual_info_classif
+    else:
+        y_encoded = y
+        mi_func = mutual_info_regression
+    
+    # Calculate mutual information with target
+    relevance_scores = mi_func(X, y_encoded, random_state=42)
+    
+    # Simplified mRMR selection
+    selected_features = []
+    remaining_features = list(range(len(X.columns)))
+    
+    # Select first feature with highest relevance
+    if len(remaining_features) > 0:
+        first_idx = np.argmax(relevance_scores)
+        selected_features.append(first_idx)
+        remaining_features.remove(first_idx)
+    
+    # Iteratively select features
+    for _ in range(min(k-1, len(remaining_features))):
+        best_score = -np.inf
+        best_feature = None
+        
+        for feature_idx in remaining_features:
+            relevance = relevance_scores[feature_idx]
+            
+            if selected_features:
+                redundancy = np.mean([
+                    np.abs(np.corrcoef(X.iloc[:, feature_idx], X.iloc[:, sel_idx])[0, 1])
+                    for sel_idx in selected_features
+                ])
+            else:
+                redundancy = 0
+            
+            mrmr_score = relevance - redundancy
+            
+            if mrmr_score > best_score:
+                best_score = mrmr_score
+                best_feature = feature_idx
+        
+        if best_feature is not None:
+            selected_features.append(best_feature)
+            remaining_features.remove(best_feature)
+    
+    # Create importance scores
+    importance_scores = np.zeros(len(X.columns))
+    for i, feature_idx in enumerate(selected_features):
+        importance_scores[feature_idx] = (len(selected_features) - i) / len(selected_features)
+    
+    # Create results DataFrame
+    scores_df = pd.DataFrame({
+        'feature': X.columns,
+        'importance': importance_scores,
+        'rank': np.argsort(-importance_scores) + 1,
+        'p_value': np.nan,
+        'selected': importance_scores > 0
+    })
+    
+    return FeatureImportanceResult(
+        method=FeatureSelectionMethod.MRMR,
+        scores=scores_df,
+        metadata={'k': k, 'n_selected': len(selected_features)},
+        execution_time=time.time() - start_time
+    )
+
+
+def relief_f_analysis(
+    X: pd.DataFrame,
+    y: pd.Series,
+    n_neighbors: int = 10,
+    n_iterations: int = 100
+) -> FeatureImportanceResult:
+    """
+    Perform simplified Relief-F feature selection.
+    """
+    import time
+    start_time = time.time()
+    
+    from sklearn.neighbors import NearestNeighbors
+    from sklearn.preprocessing import LabelEncoder, StandardScaler
+    
+    # Handle categorical targets
+    if y.dtype == 'object':
+        le = LabelEncoder()
+        y_encoded = le.fit_transform(y)
+    else:
+        y_encoded = y
+    
+    # Standardize features
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    # Initialize feature weights
+    feature_weights = np.zeros(X.shape[1])
+    
+    # Relief-F algorithm
+    for _ in range(n_iterations):
+        idx = np.random.randint(0, len(X))
+        instance = X_scaled[idx]
+        instance_class = y_encoded[idx]
+        
+        # Find nearest neighbors
+        nn = NearestNeighbors(n_neighbors=n_neighbors+1)
+        nn.fit(X_scaled)
+        distances, indices = nn.kneighbors([instance])
+        neighbor_indices = indices[0][1:]
+        
+        # Update feature weights
+        for feature_idx in range(X.shape[1]):
+            hit_diff = 0
+            miss_diff = 0
+            
+            for neighbor_idx in neighbor_indices:
+                neighbor_class = y_encoded[neighbor_idx]
+                feature_diff = abs(instance[feature_idx] - X_scaled[neighbor_idx, feature_idx])
+                
+                if neighbor_class == instance_class:
+                    hit_diff += feature_diff
+                else:
+                    miss_diff += feature_diff
+            
+            feature_weights[feature_idx] += (miss_diff - hit_diff) / (n_neighbors * n_iterations)
+    
+    # Normalize weights to [0, 1]
+    if feature_weights.max() > feature_weights.min():
+        feature_weights = (feature_weights - feature_weights.min()) / (feature_weights.max() - feature_weights.min())
+    
+    # Create results DataFrame
+    scores_df = pd.DataFrame({
+        'feature': X.columns,
+        'importance': feature_weights,
+        'rank': np.argsort(-feature_weights) + 1,
+        'p_value': np.nan,
+        'selected': feature_weights > np.percentile(feature_weights, 75)
+    })
+    
+    return FeatureImportanceResult(
+        method=FeatureSelectionMethod.RELIEF_F,
+        scores=scores_df,
+        metadata={'n_neighbors': n_neighbors, 'n_iterations': n_iterations},
         execution_time=time.time() - start_time
     )
 
@@ -1071,26 +1425,67 @@ def comprehensive_feature_analysis(
         X_filtered = X
     
     # Phase 2: Core Feature Selection
-    if AnalysisPhase.CORE_SELECTION in config.phases:
-        try:
-            # Mutual Information
-            mi_result = mutual_information_analysis(X_filtered, y)
-            results.importance_results['mutual_information'] = mi_result
-            
-            # ANOVA F-test
-            anova_result = anova_f_test_analysis(X_filtered, y)
-            results.importance_results['anova_f_test'] = anova_result
-            
-            # Random Forest
-            rf_result = random_forest_analysis(X_filtered, y, config.rf_n_estimators)
-            results.importance_results['random_forest'] = rf_result
-            
-            # LDA
-            lda_result = lda_analysis(X_filtered, y)
-            results.importance_results['lda'] = lda_result
-            
-        except Exception as e:
-            warnings_list.append(f"Core feature selection failed: {e}")
+    if AnalysisPhase.CORE_SELECTION in config.phases and config.methods:
+        for method in config.methods:
+            try:
+                if method == FeatureSelectionMethod.MUTUAL_INFORMATION:
+                    result = mutual_information_analysis(X_filtered, y)
+                    results.importance_results['mutual_information'] = result
+                    
+                elif method == FeatureSelectionMethod.ANOVA_F_TEST:
+                    result = anova_f_test_analysis(X_filtered, y)
+                    results.importance_results['anova_f_test'] = result
+                    
+                elif method == FeatureSelectionMethod.KRUSKAL_WALLIS:
+                    result = kruskal_wallis_analysis(X_filtered, y)
+                    results.importance_results['kruskal_wallis'] = result
+                    
+                elif method == FeatureSelectionMethod.VARIANCE_THRESHOLD:
+                    result = variance_threshold_analysis(X_filtered, config.variance_threshold)
+                    results.importance_results['variance_threshold'] = result
+                    
+                elif method == FeatureSelectionMethod.FISHER_SCORE:
+                    result = fisher_score_analysis(X_filtered, y)
+                    results.importance_results['fisher_score'] = result
+                    
+                elif method == FeatureSelectionMethod.RANDOM_FOREST:
+                    result = random_forest_analysis(X_filtered, y, config.rf_n_estimators)
+                    results.importance_results['random_forest'] = result
+                    
+                elif method == FeatureSelectionMethod.LDA:
+                    result = lda_analysis(X_filtered, y)
+                    results.importance_results['lda'] = result
+                    
+                elif method == FeatureSelectionMethod.LASSO:
+                    result = lasso_analysis(X_filtered, y, config.lasso_alpha)
+                    results.importance_results['lasso_regression'] = result
+                    
+                elif method == FeatureSelectionMethod.RIDGE:
+                    result = ridge_analysis(X_filtered, y, config.ridge_alpha)
+                    results.importance_results['ridge_regression'] = result
+                    
+                elif method == FeatureSelectionMethod.ELASTIC_NET:
+                    result = elastic_net_analysis(X_filtered, y, config.elastic_net_alpha, config.elastic_net_l1_ratio)
+                    results.importance_results['elastic_net'] = result
+                    
+                elif method == FeatureSelectionMethod.XGBOOST:
+                    result = xgboost_analysis(X_filtered, y, config.xgb_n_estimators)
+                    results.importance_results['xgboost'] = result
+                    
+                elif method == FeatureSelectionMethod.SVM_L1:
+                    result = svm_l1_analysis(X_filtered, y, config.svm_C)
+                    results.importance_results['svm_l1_penalty'] = result
+                    
+                elif method == FeatureSelectionMethod.MRMR:
+                    result = mrmr_analysis(X_filtered, y, config.mrmr_k)
+                    results.importance_results['minimum_redundancy_maximum_relevance'] = result
+                    
+                elif method == FeatureSelectionMethod.RELIEF_F:
+                    result = relief_f_analysis(X_filtered, y, config.relief_n_neighbors, config.relief_n_iterations)
+                    results.importance_results['relief_f_algorithm'] = result
+                    
+            except Exception as e:
+                warnings_list.append(f"Method {method.value} failed: {e}")
     
     # Phase 3: Consensus Ranking
     if AnalysisPhase.CONSENSUS in config.phases and results.importance_results:

@@ -1,0 +1,8 @@
+feature,consensus_score,rank,method_agreement
+min_firing_rate,4.7272727272727275,1,11
+pearson_cc_min,4.7272727272727275,2,11
+participation_ratio_std,4.636363636363637,3,11
+pearson_cc_max,4.090909090909091,4,11
+fano_factor_std,3.909090909090909,5,11
+entropy_isi_std,3.272727272727273,6,11
+pearson_cc_median,2.6363636363636362,7,11

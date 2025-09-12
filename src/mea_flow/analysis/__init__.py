@@ -15,6 +15,7 @@ from .discriminant import (
     FeatureAnalysisConfig,
     FeatureAnalysisResults,
     AnalysisPhase,
+    FeatureSelectionMethod,
     FeatureImportanceResult,
     RedundancyAnalysisResult,
     ConsensusResult
@@ -57,6 +58,7 @@ __all__ = [
     "FeatureAnalysisConfig",
     "FeatureAnalysisResults",
     "AnalysisPhase",
+    "FeatureSelectionMethod",
     "FeatureImportanceResult",
     "RedundancyAnalysisResult",
     "ConsensusResult",

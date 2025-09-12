@@ -77,7 +77,7 @@ def plot_feature_importance(
         width = bar.get_width()
         ax.text(width + 0.01, bar.get_y() + bar.get_height()/2, 
                f'{score:.3f}', ha='left', va='center', fontweight='bold',
-               color='white', weight='bold')
+               color='white')
     
     plt.tight_layout()
     
@@ -439,8 +439,10 @@ def plot_analysis_summary(
     ax7 = fig.add_subplot(gs[2, 1])
     if results.importance_results:
         method_names = [name.replace('_', ' ').title() for name in results.importance_results.keys()]
-        # Mock performance scores - in real implementation, track method performance
-        performance_scores = [0.85, 0.82, 0.88, 0.79][:len(method_names)]
+        # Use execution times as performance metric (inverted and normalized)
+        execution_times = [results.importance_results[name].execution_time for name in results.importance_results.keys()]
+        max_time = max(execution_times) if execution_times else 1
+        performance_scores = [1 - (t / max_time) * 0.5 + 0.5 for t in execution_times]  # Scale 0.5-1.0
         bars = ax7.bar(method_names, performance_scores, color='lightgreen', alpha=0.7)
         ax7.set_title('Method Performance')
         ax7.set_ylabel('Score')

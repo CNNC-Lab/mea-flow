@@ -1,5 +1,15 @@
 # Comprehensive Feature Analysis Methods Reference
 
+> **Methods Section for Research Papers**
+> 
+> **Feature Selection and Importance Analysis**
+> 
+> To identify discriminative neural features from multi-electrode array (MEA) recordings, we implemented a comprehensive three-phase feature analysis pipeline. The first phase employed redundancy detection using Variance Inflation Factor (VIF) analysis (VIF > 10 threshold) and Pearson correlation analysis (|r| > 0.9 threshold) to identify and remove multicollinear features that could confound subsequent analyses (James et al., 2013; Kuhn & Johnson, 2019). Features exhibiting high redundancy were systematically excluded to ensure statistical independence of the final feature set.
+> 
+> The second phase applied eleven complementary feature selection methods spanning filter, embedded, and wrapper approaches to comprehensively evaluate feature importance. Filter methods included mutual information estimation (Kraskov et al., 2004) and ANOVA F-tests for univariate feature-target relationships. Embedded methods comprised regularized regression techniques (LASSO, Ridge, Elastic Net; Tibshirani, 1996; Zou & Hastie, 2005), tree-based importance from Random Forest and XGBoost (Breiman, 2001; Chen & Guestrin, 2016), Linear Discriminant Analysis coefficients, and Support Vector Machine with L1 penalty (Cortes & Vapnik, 1995). Specialized neural data methods included minimum Redundancy Maximum Relevance (mRMR; Peng et al., 2005) and Relief-F algorithm (Kononenko, 1994) to capture complex feature interactions relevant to electrophysiological data.
+> 
+> The final phase generated consensus feature rankings using Borda count aggregation across all methods, with features classified as critical (top 20% consensus), method-specific (high importance in ≤3 methods), redundant (removed in phase 1), or irrelevant (consistently low importance). Cross-validation stability analysis and bootstrap confidence intervals provided statistical validation of feature importance estimates. All analyses were performed using scikit-learn 1.3+ (Pedregosa et al., 2011) with standardized features (z-score normalization) and consistent random seeds for reproducibility.
+
 ## Overview
 
 This document provides a complete reference for feature selection and feature importance analysis methods suitable for MEA neural data recordings. Methods are organized by category with detailed descriptions, importance ratings, computational complexity, and use case examples.

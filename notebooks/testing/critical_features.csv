@@ -1,0 +1,8 @@
+feature,category
+min_firing_rate,critical
+pearson_cc_min,critical
+participation_ratio_std,critical
+pearson_cc_max,critical
+fano_factor_std,critical
+entropy_isi_std,critical
+pearson_cc_median,critical

@@ -378,7 +378,7 @@ def plot_pca_analysis(
 
 
 def _add_statistical_annotations(ax, data: pd.DataFrame, group_col: str, value_col: str):
-    """Add statistical significance annotations to plots."""
+    """Add statistical significance annotations with bars between groups."""
     groups = data[group_col].unique()
     
     if len(groups) < 2:
@@ -387,34 +387,76 @@ def _add_statistical_annotations(ax, data: pd.DataFrame, group_col: str, value_c
     # Perform pairwise statistical tests
     group_data = [data[data[group_col] == group][value_col].values for group in groups]
     
-    # Remove empty groups
-    group_data = [g for g in group_data if len(g) > 0]
+    # Remove empty groups and keep track of valid group names
+    valid_groups = []
+    valid_data = []
+    for i, g in enumerate(group_data):
+        if len(g) > 0:
+            valid_groups.append(groups[i])
+            valid_data.append(g)
     
-    if len(group_data) < 2:
+    if len(valid_data) < 2:
         return
     
     try:
-        # Use appropriate test based on number of groups
-        if len(group_data) == 2:
-            # Two-group comparison
-            stat, p_value = stats.mannwhitneyu(group_data[0], group_data[1])
+        # Get y-axis limits for positioning bars
+        y_min, y_max = ax.get_ylim()
+        y_range = y_max - y_min
+        
+        if len(valid_data) == 2:
+            # Two-group comparison - single significance bar
+            stat, p_value = stats.mannwhitneyu(valid_data[0], valid_data[1])
             
-            # Add significance annotation
             if p_value < 0.05:
-                y_max = max([np.max(g) for g in group_data if len(g) > 0])
-                ax.text(0.5, 0.95, f'p = {p_value:.3f}' + ('***' if p_value < 0.001 else 
-                                                          '**' if p_value < 0.01 else '*'),
-                       transform=ax.transAxes, ha='center', va='top',
-                       bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.5))
+                # Position significance bar above the data
+                bar_height = y_max + 0.05 * y_range
+                
+                # Draw horizontal line between groups
+                ax.plot([0, 1], [bar_height, bar_height], 'k-', linewidth=1)
+                # Draw vertical lines down to groups
+                ax.plot([0, 0], [bar_height, bar_height - 0.02 * y_range], 'k-', linewidth=1)
+                ax.plot([1, 1], [bar_height, bar_height - 0.02 * y_range], 'k-', linewidth=1)
+                
+                # Add significance stars
+                sig_text = '***' if p_value < 0.001 else '**' if p_value < 0.01 else '*'
+                ax.text(0.5, bar_height + 0.01 * y_range, sig_text, 
+                       ha='center', va='bottom', fontsize=12, fontweight='bold')
+                
+                # Adjust y-axis to accommodate the bar
+                ax.set_ylim(y_min, bar_height + 0.08 * y_range)
+        
         else:
-            # Multi-group comparison (Kruskal-Wallis)
-            stat, p_value = stats.kruskal(*group_data)
+            # Multi-group comparison - pairwise tests with multiple bars
+            from itertools import combinations
             
-            if p_value < 0.05:
-                ax.text(0.5, 0.95, f'Kruskal-Wallis p = {p_value:.3f}' + 
-                       ('***' if p_value < 0.001 else '**' if p_value < 0.01 else '*'),
-                       transform=ax.transAxes, ha='center', va='top',
-                       bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.5))
+            # Perform pairwise Mann-Whitney U tests
+            significant_pairs = []
+            for i, j in combinations(range(len(valid_data)), 2):
+                stat, p_value = stats.mannwhitneyu(valid_data[i], valid_data[j])
+                if p_value < 0.05:
+                    sig_text = '***' if p_value < 0.001 else '**' if p_value < 0.01 else '*'
+                    significant_pairs.append((i, j, sig_text))
+            
+            # Draw significance bars for each significant pair
+            bar_offset = 0.05 * y_range
+            for idx, (i, j, sig_text) in enumerate(significant_pairs):
+                bar_height = y_max + bar_offset * (idx + 1)
+                
+                # Draw horizontal line between groups
+                ax.plot([i, j], [bar_height, bar_height], 'k-', linewidth=1)
+                # Draw vertical lines down to groups
+                ax.plot([i, i], [bar_height, bar_height - 0.02 * y_range], 'k-', linewidth=1)
+                ax.plot([j, j], [bar_height, bar_height - 0.02 * y_range], 'k-', linewidth=1)
+                
+                # Add significance stars
+                ax.text((i + j) / 2, bar_height + 0.01 * y_range, sig_text,
+                       ha='center', va='bottom', fontsize=10, fontweight='bold')
+            
+            # Adjust y-axis to accommodate all bars
+            if significant_pairs:
+                max_bar_height = y_max + bar_offset * len(significant_pairs)
+                ax.set_ylim(y_min, max_bar_height + 0.05 * y_range)
+                
     except Exception:
         pass  # Skip if statistical test fails
 
