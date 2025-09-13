@@ -173,4 +173,13 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Large data files
+*.pkl
+*.h5
+*.hdf5
+*.mat
+*.spk
+*.csv
+notebooks/testing/
+
 #tmp/
