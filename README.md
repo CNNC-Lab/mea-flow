@@ -1,14 +1,14 @@
 # **MEA-Flow**: Neural Population Dynamics Analysis for Multi-Electrode Arrays
 
 <p align="center">
-  <img src="docs/logo.png" alt="MEA-Flow Logo" width="400"/>
+  <img src="docs/logo.png" alt="MEA-Flow Logo" width="500"/>
 </p>
 
 MEA-Flow is a comprehensive Python package for analyzing multi-electrode array (MEA) data with a focus on population dynamics, feature analysis, and comparative studies across experimental conditions. The package provides a complete pipeline from data loading to advanced statistical analysis and visualization.
 
 ## 🚀 Key Features
 
-### 📊 **Comprehensive Neural Activity Analysis**
+### 📊 **Comprehensive Neural Activity Analysis from raw data**
 - **Activity Metrics**: Firing rates, spike counts, burst detection, network burst analysis
 - **Regularity Metrics**: CV-ISI, Local Variation (LV), entropy measures, Fano factors
 - **Synchrony Metrics**: Pairwise correlations, spike train distances, population synchrony measures
@@ -37,6 +37,31 @@ MEA-Flow is a comprehensive Python package for analyzing multi-electrode array (
 - **Feature Analysis**: Importance rankings, consensus plots, method comparisons
 - **Manifold Visualizations**: 2D/3D embeddings with condition coloring
 - **Statistical Plots**: Comprehensive analysis dashboards and comparison plots
+
+## 📚 Documentation & Tutorials
+
+**[➡️ See the complete Notebooks Guide](notebooks/README.md)** for detailed tutorials and examples.
+
+MEA-Flow includes comprehensive Jupyter notebook tutorials covering the complete analysis pipeline:
+
+1. **[Data Loading & Format Conversion](notebooks/01_data_loading.ipynb)** - Native Python .spk loader, MATLAB .mat files, CSV import, and batch processing
+2. **[Activity Visualization](notebooks/02_activity_visualization.ipynb)** - Raster plots, electrode heatmaps, well activity analysis, and animated visualizations
+3. **[Activity Analysis](notebooks/03_activity_analysis.ipynb)** - 70+ neural metrics including activity, regularity, synchrony, and burst detection
+4. **[Feature-Based Analysis](notebooks/04_feature_based_analysis.ipynb)** - Feature selection, dimensionality reduction, clustering, and machine learning
+5. **[Manifold Analysis](notebooks/05_manifold_analysis.ipynb)** - Population dynamics, state-space geometry, and cross-condition comparisons
+
+Each notebook includes:
+- Step-by-step code examples with detailed explanations
+- Publication-quality visualization examples
+- Best practices for analysis workflows
+- Links to comprehensive method documentation
+
+### Method Reference Documentation
+
+- **[Activity Analysis Methods](notebooks/ACTIVITY_ANALYSIS_METHODS_REFERENCE.md)** - Complete mathematical descriptions of 70+ neural activity metrics
+- **[Feature Analysis Methods](notebooks/FEATURE_ANALYSIS_METHODS_REFERENCE.md)** - Detailed algorithms for 11 feature selection methods
+- **[Manifold Methods](notebooks/MANIFOLD_METHODS_DOCUMENTATION.md)** - Theory and implementation of dimensionality reduction techniques
+- **[Clustering Methods](notebooks/CLUSTERING_METHODS_DOCUMENTATION.md)** - K-means, GMM, DBSCAN, and hierarchical clustering for neural data
 
 ## 🛠️ Installation
 
@@ -111,28 +136,6 @@ plotter = MEAPlotter()
 fig = plotter.plot_raster(spike_list, time_range=(0, 30))
 ```
 
-## 📖 Documentation & Tutorials
-
-### Interactive Notebooks
-
-1. **[Data Loading](notebooks/01_data_loading.ipynb)** - Native .spk file loading and format conversion
-2. **[Activity Visualization](notebooks/02_activity_visualization.ipynb)** - Raster plots and electrode mapping
-3. **[Activity Analysis](notebooks/03_activity_analysis.ipynb)** - Comprehensive neural metrics computation
-4. **[Feature-Based Analysis](notebooks/04_feature_based_analysis.ipynb)** - Feature selection and machine learning
-5. **[Manifold Analysis](notebooks/05_manifold_analysis.ipynb)** - Population dynamics and dimensionality reduction
-
-### Method References
-
-- **[Activity Analysis Methods](notebooks/ACTIVITY_ANALYSIS_METHODS_REFERENCE.md)** - Mathematical descriptions of neural metrics
-- **[Feature Analysis Methods](notebooks/FEATURE_ANALYSIS_METHODS_REFERENCE.md)** - Feature selection and importance algorithms
-- **[Manifold Methods](notebooks/MANIFOLD_METHODS_DOCUMENTATION.md)** - Dimensionality reduction techniques
-- **[Clustering Methods](notebooks/CLUSTERING_METHODS_DOCUMENTATION.md)** - Clustering algorithms for neural data
-
-### Installation & Setup
-
-- **[Installation Guide](INSTALLATION_GUIDE.md)** - Detailed setup instructions
-- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Production deployment information
-
 ## 🔬 Analysis Workflows
 
 ### 1. Basic Neural Activity Analysis
@@ -205,7 +208,7 @@ If you use MEA-Flow in your research, please cite:
 ```bibtex
 @software{mea_flow_2024,
   title={MEA-Flow: Neural Population Dynamics Analysis for Multi-Electrode Arrays},
-  author={MEA-Flow Development Team},
+  author={Renato Duarte},
   year={2024},
   url={https://github.com/CNNC-Lab/mea-flow},
   doi={10.5281/zenodo.XXXXXXX},
@@ -213,27 +216,29 @@ If you use MEA-Flow in your research, please cite:
 }
 ```
 
-### Publications Using MEA-Flow
-
-*This section will be updated as research using MEA-Flow is published.*
-
-## 🤝 Contributing
-
-MEA-Flow is an open-source project welcoming contributions from the neuroscience community. Please see our contribution guidelines for details on:
-
-- Bug reports and feature requests
-- Code contributions and pull requests
-- Documentation improvements
-- Method validation and testing
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## 🙏 Acknowledgements
 
-MEA-Flow development was supported by advances in computational neuroscience and the open-source scientific Python ecosystem. Special thanks to the developers of scikit-learn, matplotlib, and other foundational libraries that make this work possible.
+MEA-Flow was developed in collaboration with the research groups of **Ana Luísa Carvalho** and **Ester Coutinho** at:
+- **CNC-UC** - Center for Neuroscience and Cell Biology, University of Coimbra
+- **CIBB** - Centre for Innovative Biomedicine and Biotechnology, University of Coimbra
+
+### Funding
+
+This work was partially funded by:
+- **Portuguese Foundation for Science and Technology (FCT)** under projects:
+  - UIDB/04539/2020
+  - UIDP/04539/2020
+  - LA/P/0058/2020
+- **European Union's Horizon 2020** research and innovation programme under grant agreement No. 952422 (DYNABrain)
+
+### Development
+
+MEA-Flow builds upon the open-source scientific Python ecosystem. 
+We acknowledge the developers of scikit-learn, matplotlib, scipy, and other foundational libraries. 
+Development was assisted by Claude (Anthropic) via Windsurf IDE for code generation and optimization.
 
 ---
-
-**MEA-Flow**: Empowering neuroscience research through comprehensive multi-electrode array analysis.

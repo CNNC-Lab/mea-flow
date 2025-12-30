@@ -14,7 +14,7 @@ This guide provides comprehensive installation instructions for MEA-Flow with al
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/CNNC-Lab/mea-flow.git
 cd mea-flow
 
 # Install with all dependencies using uv
@@ -25,7 +25,7 @@ uv sync
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/CNNC-Lab/mea-flow.git
 cd mea-flow
 
 # Install in development mode with all dependencies
@@ -37,28 +37,59 @@ pip install -e ".[all]"
 MEA-Flow includes several categories of dependencies for comprehensive neural data analysis:
 
 ### Core Dependencies
+
+**Scientific Computing:**
 - **numpy** (≥1.24.0) - Numerical computing
 - **scipy** (≥1.10.0) - Scientific computing
 - **pandas** (≥2.0.0) - Data manipulation
+- **numba** (≥0.57.0) - JIT compilation for performance
+
+**Machine Learning & Statistics:**
 - **scikit-learn** (≥1.3.0) - Machine learning
 - **statsmodels** (≥0.14.0) - Statistical modeling
-- **matplotlib** (≥3.7.0) - Plotting
-- **seaborn** (≥0.12.0) - Statistical visualization
-- **h5py** (≥3.8.0) - HDF5 file support
-
-### Advanced ML Dependencies
 - **xgboost** (≥3.0.5) - Gradient boosting
 - **lightgbm** (≥4.6.0) - Gradient boosting
+
+**Feature Selection & Imbalanced Learning:**
 - **imbalanced-learn** (≥0.14.0) - Handling imbalanced datasets
 - **mlxtend** (≥0.23.4) - Machine learning extensions
 - **skrebate** (≥0.62) - Relief-based feature selection
 - **boruta** (≥0.4.3) - All-relevant feature selection
 
+**Visualization:**
+- **matplotlib** (≥3.7.0) - Plotting
+- **seaborn** (≥0.12.0) - Statistical visualization
+
+**Data I/O & Processing:**
+- **h5py** (≥3.8.0) - HDF5 file support
+- **tqdm** (≥4.65.0) - Progress bars
+- **joblib** (≥1.3.0) - Parallel processing
+
+**Manifold Learning:**
+- **umap-learn** (≥0.5.9) - UMAP dimensionality reduction
+
 ### Optional Dependencies
-- **pyspike** (≥0.7.0) - Spike train analysis
-- **umap-learn** (≥0.5.9) - Manifold learning
-- **jupyter** - Notebook support
-- **plotly** - Interactive plotting
+
+**Enhanced Spike Analysis:**
+- **pyspike** (≥0.7.0) - Advanced spike train distance measures
+
+**Notebook & Interactive Visualization:**
+- **jupyter** (≥1.0.0) - Jupyter notebook support
+- **jupyterlab** (≥4.0.0) - JupyterLab IDE
+- **ipywidgets** (≥8.0.0) - Interactive widgets
+- **plotly** (≥5.15.0) - Interactive plotting
+
+Install optional dependencies with:
+```bash
+# For spike analysis
+pip install -e ".[full]"
+
+# For notebooks
+pip install -e ".[notebooks]"
+
+# For everything
+pip install -e ".[all]"
+```
 
 ## Feature Analysis Pipeline Capabilities
 
@@ -246,7 +277,7 @@ For development work:
 
 ```bash
 # Clone and install in development mode
-git clone <repository-url>
+git clone https://github.com/CNNC-Lab/mea-flow.git
 cd mea-flow
 uv sync --dev
 

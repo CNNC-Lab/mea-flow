@@ -81,10 +81,10 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/username/mea-flow"
-Documentation = "https://mea-flow.readthedocs.io"
-Repository = "https://github.com/username/mea-flow.git"
-"Bug Tracker" = "https://github.com/username/mea-flow/issues"
+Homepage = "https://github.com/CNNC-Lab/mea-flow"
+Documentation = "https://github.com/CNNC-Lab/mea-flow/tree/main/notebooks"
+Repository = "https://github.com/CNNC-Lab/mea-flow.git"
+"Bug Tracker" = "https://github.com/CNNC-Lab/mea-flow/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mea_flow"]

@@ -59,6 +59,6 @@ Main Modules:
 - mea_flow.visualization: MEA-specific plotting and visualization routines
 - mea_flow.utils: Utility functions and helper tools
 
-For detailed documentation and examples, see:
-https://mea-flow.readthedocs.io
+For detailed documentation and examples, see the interactive notebooks at:
+https://github.com/CNNC-Lab/mea-flow/tree/main/notebooks
 """
