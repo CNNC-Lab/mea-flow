@@ -197,9 +197,7 @@ MEA-Flow is designed for neuroscience researchers working with multi-electrode a
 ## 📚 Citation & Publication
 
 ### Zenodo DOI
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
-
-*Note: DOI will be assigned upon first Zenodo release*
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18101939.svg)](https://doi.org/10.5281/zenodo.18101939)
 
 ### How to Cite
 
@@ -208,10 +206,11 @@ If you use MEA-Flow in your research, please cite:
 ```bibtex
 @software{mea_flow_2024,
   title={MEA-Flow: Neural Population Dynamics Analysis for Multi-Electrode Arrays},
-  author={Renato Duarte},
+  author={Duarte, Renato},
   year={2024},
+  publisher={Zenodo},
   url={https://github.com/CNNC-Lab/mea-flow},
-  doi={10.5281/zenodo.XXXXXXX},
+  doi={10.5281/zenodo.18101939},
   version={0.1.0}
 }
 ```
